@@ -14,6 +14,7 @@ def refresh_the_token():
     token_data = token_manager.load_token()
     access_token = token_data.get("access_token")
     expiry_date_str = token_data.get("expiry_date")
+    user_id = token_data.get("user_id")
 
     if not access_token or not expiry_date_str:
         log.error("Access token or expiry date not found in storage. Cannot refresh.")
@@ -45,7 +46,7 @@ def refresh_the_token():
             log.error(f"Refresh response was invalid: {new_token_data}")
             return
 
-        token_manager.save_token(new_token, expires_in)
+        token_manager.save_token(new_token, expires_in, user_id)
         log.info("✅ Token has been successfully refreshed and saved.")
 
     except requests.exceptions.RequestException as e:

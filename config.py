@@ -9,11 +9,13 @@ class Settings(BaseSettings):
 
     THREADS_API_VERSION: str = "v1.0"
     THREADS_API_BASE_URL: str = "https://graph.threads.net/"
+    FACEBOOK_API_VERSION: str = "v23.0"
     FACEBOOK_API_BASE_URL: str = "https://graph.facebook.com/"
+
+    THREADS_CLIENT_ID: str
+    THREADS_CLIENT_SECRET: str
     THREADS_ACCESS_TOKEN: Optional[str] = None
     INSTAGRAM_USER_ID: Optional[str] = None
-    # client_id=1127108165970736
-    # sec=6e216e83b151d858204008581734fc7d
 
     # --- Google Sheets Settings ---
     # Follow a guide on "Google Cloud Service Account" to get this JSON file.
