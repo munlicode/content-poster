@@ -40,7 +40,9 @@ def setup_windows_task():
     print(f"Setting up Windows Tasks: {TASK_NAME} & {REFRESH_TASK_NAME}")
 
     # --- 1. Setup for Main Posting Task (every minute) ---
-    main_command = f'"{python_path}" "{main_script_path}"'
+    # main_command = f'"{python_path}" "{main_script_path}"'
+    main_command = f'"{python_path}" "{main_script_path}" >> "{project_path}\\task_output.log" 2>&1'
+
     schtasks_main_command = [
         "schtasks",
         "/create",
