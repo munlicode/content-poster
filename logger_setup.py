@@ -1,12 +1,15 @@
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
+import os
 
 
 def setup_logger():
     """Configures a rotating log file for the application."""
     # Define the log file and rotation settings
-    log_file = "app.log"
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    log_file = os.path.join(project_root, "app.log")
+
     max_log_size_mb = 5  # Max size in MB before rotating
     backup_count = 5  # How many old log files to keep
 

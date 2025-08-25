@@ -39,16 +39,8 @@ def setup_windows_task():
 
     print(f"Setting up Windows Tasks: {TASK_NAME} & {REFRESH_TASK_NAME}")
 
-    # The command that Task Scheduler will run
     # --- 1. Setup for Main Posting Task (every minute) ---
     main_command = f'"{python_path}" "{main_script_path}"'
-
-    # schtasks command to create a new task that runs every minute
-    # /SC MINUTE /MO 1: Sets the schedule
-    # /TN: Sets the Task Name
-    # /TR: Sets the Task Run command (what to execute)
-    # /RU SYSTEM: Runs the task as the SYSTEM user, so it runs even if you're not logged in
-    # /F: Forces the creation and overwrites the task if it already exists
     schtasks_main_command = [
         "schtasks",
         "/create",
@@ -60,9 +52,7 @@ def setup_windows_task():
         TASK_NAME,
         "/TR",
         f'cmd /c "cd /d {project_path} && {main_command}"',
-        "/RU",
-        "SYSTEM",
-        "/F",
+        "/F",  # NOTE: /RU SYSTEM has been removed
     ]
 
     # --- 2. Setup for Token Refresh Task (daily at 3 AM) ---
@@ -78,21 +68,22 @@ def setup_windows_task():
         REFRESH_TASK_NAME,
         "/TR",
         f'cmd /c "cd /d {project_path} && {refresh_command}"',
-        "/RU",
-        "SYSTEM",
-        "/F",
+        "/F",  # NOTE: /RU SYSTEM has been removed
     ]
 
     try:
-        print(f"Setting up Windows Task: {TASK_NAME}")
+        # Run setup commands
         subprocess.run(
             schtasks_main_command, check=True, capture_output=True, text=True
         )
-        print(f"Setting up Windows Task: {REFRESH_TASK_NAME}")
+        print(f"- Task '{TASK_NAME}' created/updated successfully.")
         subprocess.run(
             schtasks_refresh_command, check=True, capture_output=True, text=True
         )
+        print(f"- Task '{REFRESH_TASK_NAME}' created/updated successfully.")
         print("\nSuccess! Both scheduler tasks have been set up.")
+        print("See Step 3 in the instructions to allow them to run while logged out.")
+
     except subprocess.CalledProcessError as e:
         print(
             f"ERROR: Could not create a task. You may need to run this script as an Administrator."
