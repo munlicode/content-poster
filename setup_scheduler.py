@@ -37,10 +37,13 @@ def setup_windows_task():
     """Creates or updates a task in Windows Task Scheduler."""
     project_path, python_path, main_script_path, refresh_script_path = get_paths()
 
+    # Create the path for the windowless python executable
+    pythonw_path = python_path.replace("python.exe", "pythonw.exe")
+
     print(f"Setting up Windows Tasks: {TASK_NAME} & {REFRESH_TASK_NAME}")
 
     # --- 1. Setup for Main Posting Task (every minute) ---
-    main_command = f'"{python_path}" "{main_script_path}"'
+    main_command = f'"{pythonw_path}" "{main_script_path}"'
     schtasks_main_command = [
         "schtasks",
         "/create",
@@ -56,7 +59,7 @@ def setup_windows_task():
     ]
 
     # --- 2. Setup for Token Refresh Task (daily at 3 AM) ---
-    refresh_command = f'"{python_path}" "{refresh_script_path}"'
+    refresh_command = f'"{pythonw_path}" "{refresh_script_path}"'
     schtasks_refresh_command = [
         "schtasks",
         "/create",
