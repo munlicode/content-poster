@@ -14,8 +14,6 @@ class Settings(BaseSettings):
 
     THREADS_CLIENT_ID: str
     THREADS_CLIENT_SECRET: str
-    THREADS_ACCESS_TOKEN: Optional[str] = None
-    INSTAGRAM_USER_ID: Optional[str] = None
 
     # --- Google Sheets Settings ---
     # Follow a guide on "Google Cloud Service Account" to get this JSON file.

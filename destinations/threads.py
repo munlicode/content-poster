@@ -46,16 +46,23 @@ class ThreadsDestination(IDestination):
             )
             # The API documentation shows parameters in the URL, so we'll use `params` instead of `data`.
             container_response = requests.post(
-                container_creation_url, params=container_payload
+                container_creation_url, params=container_payload, timeout=20
             )
+            log.info(">>> ATTEMPTING REQUEST WITH 20-SECOND TIMEOUT... <<<")
             container_response.raise_for_status()
+            log.info(">>> STATUS... <<<")
             container_data = container_response.json()
+            log.info(">>> JSON... <<<")
             container_id = container_data.get("id")
+            log.info(f">>> Container ID --- {container_id} <<<")
             if not container_id:
                 log.error(
                     f"Failed to create media container. Response: {container_data}"
                 )
                 return False
+        except requests.exceptions.Timeout as e:
+            log.error(f"The request to create a container timed out: {e}")
+            return False
         except requests.exceptions.RequestException as e:
             log.error(f"Error creating media container: {e}")
             log.error(
@@ -65,7 +72,7 @@ class ThreadsDestination(IDestination):
 
         # --- Step 2: Publish the media container ---
         # UPDATED ENDPOINT: Now uses '/threads_publish'
-        publish_url = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}/{settings.INSTAGRAM_USER_ID}/threads_publish"
+        publish_url = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}/{user_id}/threads_publish"
         publish_payload = {
             "creation_id": container_id,
             "access_token": current_token,

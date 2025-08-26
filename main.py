@@ -22,6 +22,8 @@ def run_pipeline():
     source = GoogleSheetsSource()
     pending_posts = cache.get("pending_posts", [])
 
+    log.info(f"Pending Posts: {pending_posts}")
+
     # 2. If a fetch is due, connect to the Google Sheets API
     if fetch_fresh_data:
         all_data = source.get_data()
@@ -37,7 +39,7 @@ def run_pipeline():
             )
     else:
         log.info("Using cached data. No API fetch needed.")
-
+    log.info(f"Pending Posts: {pending_posts}")
     # If there are no posts scheduled for today, exit early
     if not pending_posts:
         log.info("No pending posts for today in cache. Nothing to do.")
@@ -47,6 +49,7 @@ def run_pipeline():
     # 3. From the pending list, filter for posts whose scheduled time has passed
     time_validator = TimeValidator()
     posts_to_publish = time_validator.process(pending_posts)
+    log.info(f"Posts to publish: {posts_to_publish}")
     if not posts_to_publish:
         log.info("No posts are due to be published at this time.")
     else:
@@ -58,6 +61,7 @@ def run_pipeline():
         updated_pending_posts = pending_posts[:]
 
         for item in posts_to_publish:
+            log.info(f"About to post: {item.get("text")}")
             success = destination.post(item)
 
             if success:

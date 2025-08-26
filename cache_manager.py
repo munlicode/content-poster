@@ -40,7 +40,7 @@ def should_fetch_fresh_data(last_fetch_str: str) -> bool:
     if now.date() > last_fetch_dt.date():
         log.info("New day has started. A fresh fetch is required.")
         return True
-
+    log.info(f"FETCH_SCHEDULE: {settings.FETCH_SCHEDULE}")
     # Check if any scheduled time has passed since the last fetch
     for time_str in settings.FETCH_SCHEDULE:
         scheduled_time = datetime.strptime(time_str, "%H:%M").time()

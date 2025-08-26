@@ -94,3 +94,4 @@ cron.log
 token_storage.json
 credentials.json
 post_cache.json
+app.log
