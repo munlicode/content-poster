@@ -1,157 +1,17 @@
 # Content Poster 🚀
 
-This project automates the process of publishing content to social media platforms like Threads. It fetches scheduled posts from a Google Sheet, intelligently caches them, and publishes them at the specified date and time. It also includes a robust system for automatically refreshing API access tokens and setting up scheduled tasks.
+This project automates publishing content to Threads by fetching scheduled posts from a Google Sheet. It uses intelligent caching to minimize API calls, automatically refreshes API access tokens, and includes helper scripts to set up scheduled tasks across Windows, macOS, and Linux.
+
+-----
 
 ## Features ✨
 
   * **Google Sheets Integration:** Manage all your content from a simple spreadsheet.
-  * **Flexible Scheduling:** Posts are published based on a `date` and `time` column.
-  * **Intelligent Caching:** Minimizes API calls by fetching data on a configurable schedule and caching it locally.
-  * **Automated Token Refresh:** A separate, daily script ensures your API access token never expires.
+  * **Flexible Scheduling:** Posts are published based on a `date` and `time` in your sheet.
+  * **Intelligent Caching:** Minimizes API calls by fetching data only at times you define.
+  * **Automated Token Refresh:** A separate, daily script ensures your Threads API access token never expires.
   * **Status Tracking:** Automatically updates your Google Sheet with a "Published" or "Failed" status.
-  * **Cross-Platform Scheduler:** A helper script automatically sets up the required scheduled tasks on Linux, macOS, and Windows.
-  * **Rotating Logs:** Keeps a clean, manageable log file (`app.log`) for easy debugging.
-
------
-
-## Setup Guide
-
-Follow these steps to get the project running.
-
-### \#\#\# Step 1: Prerequisites
-
-  * Python 3.8+
-  * Git
-
-### \#\#\# Step 2: Installation
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/munlicode/content-poster ("On Windows run from C:/Users/<YOUR_USER_NAME>/")
-    cd content-poster
-    ```
-2.  **Create and activate a virtual environment:**
-    ```bash
-    # Create the venv
-    python -m venv venv
-
-    # Activate it (Windows)
-    .\venv\Scripts\activate
-
-    # Activate it (Linux/macOS)
-    source venv/bin/activate
-    ```
-3.  **Install the required libraries:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-### \#\#\# Step 3: Google Configuration
-
-You'll need to authorize the script to access your Google Sheet.
-
-1.  **Create a Google Sheet:** Set up a sheet with columns for `date`, `text`, `time`, and `status`.
-2.  **Create a Google Cloud Project:**
-      * Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a new project.
-      * In your project, go to **APIs & Services** and enable the **Google Drive API** and **Google Sheets API**.
-3.  **Create a Service Account:**
-      * Go to **Credentials**, click **Create Credentials**, and choose **Service Account**.
-      * Give it a name and click **Done**.
-4.  **Generate a JSON Key:**
-      * Click on your new service account, go to the **Keys** tab, and click **Add Key** \> **Create new key**.
-      * Choose **JSON**. A file will be downloaded.
-      * Rename this file to `credentials.json` and move it to the root of your project folder.
-5.  **Share Your Google Sheet:**
-      * Open the `credentials.json` file and copy the `client_email` address.
-      * Go to your Google Sheet, click the **Share** button, and share it with that email address, giving it **Editor** permissions.
-
-### \#\#\# Step 4: Application Configuration
-
-The script uses a `.env` file to manage all its settings.
-
-1.  **Create the `.env` file:** Copy the example file to create your own configuration.
-    ```bash
-    # On Windows (in Command Prompt)
-    copy .env.example .env
-
-    # On Linux/macOS
-    cp .env.example .env
-    ```
-2.  **Edit the `.env` file:** Open the new `.env` file and fill in the values for your setup.
-
------
-
-## Usage
-
-### \#\#\# Manual Run (for Testing)
-
-You can run the script manually at any time to immediately publish any posts that are due.
-
-```bash
-python main.py
-```
-
-### \#\#\# Automated Scheduling
-
-A helper script is included to automatically set up the scheduled tasks for both posting and token refreshing.
-
-  * **To add the scheduled jobs:**
-    ```bash
-    python setup_scheduler.py add
-    ```
-  * **To remove the scheduled jobs:**
-    ```bash
-    python setup_scheduler.py remove
-    ```
-
-**Note for Windows Users:** You must run these commands from an **Administrator** Command Prompt or PowerShell.
-
------
-
-## \#\# Important Note on Scheduling & Sleep Mode
-
-Scheduled tasks can only run if the computer is **on and awake**. If your computer is turned off or in sleep mode, the script will not run.
-
-To ensure continuous operation for a server-like setup, you must configure your power settings to prevent the computer from sleeping automatically.
-
-  * **Windows:**
-    1.  Go to **Settings \> System \> Power & Sleep**.
-    2.  Set **"When plugged in, PC goes to sleep after"** to **Never**.
-  * **macOS:**
-    1.  Go to **System Settings \> Displays \> Advanced**.
-    2.  Enable **"Prevent automatic sleeping on power adapter when the display is off"**.
-    3.  (For older macOS) Go to **System Preferences \> Energy Saver** and check "Prevent computer from sleeping automatically when the display is off".
-  * **Linux (Ubuntu/GNOME):**
-    1.  Go to **Settings \> Power**.
-    2.  Under "Power Saving Options," set **"Screen Blank"** to "Never".
-    3.  Ensure **"Automatic Suspend"** is turned off.
-
-
-
-# Monitoring Info
-
-app.log
-
-# Troubleshooting
-When it fails to run.
-Run `schtasks /query /tn "Content Poster Script" /v /fo list` and look on last run time. If it obviously seems not to run, try to move to different directory inside your file system. 
-
-Of course. I will update your `README.md` to include a comprehensive section on how to get and store the Threads API credentials, and how to configure all the application settings using a `.env` file, based on the `Settings` class you provided.
-
------
-
-# Content Poster 🚀
-
-This project automates the process of publishing content to social media platforms like Threads. It fetches scheduled posts from a Google Sheet, intelligently caches them, and publishes them at the specified date and time. It also includes a robust system for automatically refreshing API access tokens and setting up scheduled tasks.
-
-## Features ✨
-
-  * **Google Sheets Integration:** Manage all your content from a simple spreadsheet.
-  * **Flexible Scheduling:** Posts are published based on a `date` and `time` column.
-  * **Intelligent Caching:** Minimizes API calls by fetching data on a configurable schedule (`FETCH_SCHEDULE`).
-  * **Automated Token Refresh:** A separate, daily script ensures your API access token never expires.
-  * **Status Tracking:** Automatically updates your Google Sheet with a "Published" or "Failed" status.
-  * **Cross-Platform Scheduler:** A helper script automatically sets up the required scheduled tasks on Linux, macOS, and Windows.
+  * **Cross-Platform Scheduler:** A helper script automatically sets up the required scheduled tasks.
   * **Centralized Configuration:** All settings are managed in a simple `.env` file.
 
 -----
@@ -165,14 +25,19 @@ Follow these steps to get the project running.
   * Python 3.8+
   * Git
 
-### \#\#\# Step 2: Installation
+### \#\#\# Step 2: Project Installation
 
 1.  **Clone the repository:**
+
     ```bash
-    git clone <your-repository-url>
+    git clone https://github.com/munlicode/content-poster
     cd content-poster
     ```
+
+    *(**Note for Windows:** It's recommended to clone into your user directory, e.g., `C:/Users/<YOUR_USER_NAME>/`)*
+
 2.  **Create and activate a virtual environment:**
+
     ```bash
     # Create the venv
     python -m venv venv
@@ -183,7 +48,9 @@ Follow these steps to get the project running.
     # Activate it (Linux/macOS)
     source venv/bin/activate
     ```
+
 3.  **Install the required libraries:**
+
     ```bash
     pip install -r requirements.txt
     ```
@@ -192,33 +59,58 @@ Follow these steps to get the project running.
 
 Authorize the script to access your Google Sheet.
 
-1.  **Create a Google Sheet:** Set up a sheet with columns for `date`, `text`, `time`, and `status`.
-2.  **Create a Google Cloud Project & Service Account:** Follow the detailed steps in the previous README to create a Google Cloud project, enable the **Google Drive & Sheets APIs**, and create a **Service Account**.
-3.  **Generate a JSON Key:** Download the service account's JSON key, rename it to `credentials.json`, and place it in the project's root directory.
-4.  **Share Your Google Sheet:** Open the `credentials.json` file, copy the `client_email`, and share your Google Sheet with that email address, giving it **Editor** permissions.
+1.  **Create a Google Sheet:** Set it up with columns for `date`, `text`, `time`, and `status`.
+2.  **Create a Google Cloud Project & Service Account:**
+      * Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a new project.
+      * In your project, go to **APIs & Services** and enable the **Google Drive API** and **Google Sheets API**.
+      * Go to **Credentials**, click **Create Credentials**, and choose **Service Account**. Give it a name and click **Done**.
+3.  **Generate a JSON Key:**
+      * Click on your new service account, go to the **Keys** tab, and click **Add Key** \> **Create new key**.
+      * Choose **JSON**. A file will be downloaded.
+      * Rename this file to `credentials.json` and move it to the root of your project folder.
+4.  **Share Your Google Sheet:**
+      * Open `credentials.json` and copy the `client_email` address.
+      * Go to your Google Sheet, click **Share**, and give **Editor** permissions to that email address.
 
 ### \#\#\# Step 4: Threads API Configuration
 
-Get the necessary credentials to allow the script to post on your behalf. For this single-user application, the **Graph API Explorer** is the most direct method.
+Follow these steps carefully to get the necessary API credentials.
 
 1.  **Create a Meta Developer App:**
 
-      * Go to the **[Meta for Developers](https://developers.facebook.com/)** portal, create an account, and create a new **App** of type "Business".
-      * In the App Dashboard, add the **"Instagram Graph API"** product and configure it.
-      * Ensure your Instagram account is a **Business or Creator Account**.
+      * Go to [Meta for Developers](https://developers.facebook.com/), create an account, and create a new **App** of type "Other" \> "Business".
+      * From the App Dashboard, add the **Threads API** product.
 
-2.  **Get a Long-Lived Access Token & User ID:**
+2.  **Configure Permissions and Testers:**
 
-      * Go to your app's **Tools \> Graph API Explorer**.
-      * Generate a **User Access Token** and grant it the `threads_content_publish` permission.
-      * The Explorer will show you a short-lived **Access Token** and your **App-Scoped User ID**. Copy the User ID—this is your `INSTAGRAM_USER_ID`.
-      * Go to the **[Access Token Debugger](https://developers.facebook.com/tools/debug/accesstoken/)**, paste the short-lived token, and click **"Extend Access Token"** to get a long-lived token that lasts 60 days. Copy this final token—this is your `THREADS_ACCESS_TOKEN`.
+      * In the sidebar under **Threads API**, go to **Use Cases**.
+      * Click **Customize**.
+      * Add the `threads_basic` and `threads_content_publish` permissions.
+      * Scroll down to **User Token Generator** and click **Add or Remove Threads Testers**. Add the Threads accounts you want to post from.
+      * The invited users must accept the invitation by going to **Threads \> Settings \> Account \> Website Authorizations \> Invites**.
 
-### \#\#\# Step 5: Application Configuration (.env file)
+3.  **Generate Your Initial Tokens:**
+
+      * Go back to your app's **Use Cases** page and find the **User Token Generator** section again.
+      * Click **Generate Threads Access Token**. Select the user you authorized and grant the permissions.
+      * A short-lived Access Token will be generated. **Copy this token.**
+      * Open the [Access Token Debugger](https://developers.facebook.com/tools/debug/accesstoken/), paste the short-lived token, and click "Debug".
+      * Copy the **User ID** shown in the debugger results. You will need both the token and User ID for the next step.
+
+4.  **Store Credentials Securely:**
+
+      * Run the included `generate_initial_token.py` script:
+        ```bash
+        python generate_initial_token.py
+        ```
+      * When prompted, paste the **short-lived Access Token** and the **User ID** you collected in the previous step.
+      * The script will automatically generate a long-lived token and create a `token_storage.json` file. This file will manage your credentials and refresh them automatically.
+
+### \#\#\# Step 5: Application Configuration (.env)
 
 All settings for the application are controlled by a `.env` file.
 
-1.  **Create your `.env` file:** Copy the provided example file.
+1.  **Create your `.env` file:**
 
     ```bash
     # On Windows (in Command Prompt)
@@ -228,26 +120,19 @@ All settings for the application are controlled by a `.env` file.
     cp .env.example .env
     ```
 
-2.  **Edit your `.env` file:** Open the new `.env` file and fill in all the values you've collected. Below is a description of each setting.
+2.  **Edit your `.env` file:** Open the new `.env` file and fill in all the values.
 
     ```dotenv
-    # .env.example
-
-    # --- Threads API Credentials ---
-    # Your Instagram Professional Account's unique ID from the Graph API Explorer.
-    INSTAGRAM_USER_ID="YOUR_INSTAGRAM_USER_ID"
-    # The long-lived (60-day) access token you generated.
-    # This will be managed by token_storage.json after the first run.
-    THREADS_ACCESS_TOKEN="YOUR_LONG_LIVED_ACCESS_TOKEN"
+    # .env
 
     # --- Google Sheets Settings ---
     # The name of your Google Sheet document.
-    GOOGLE_SHEET_NAME="aaa101"
+    GOOGLE_SHEET_NAME="Content Schedule"
     # The name of the specific tab within the sheet.
     WORKSHEET_NAME="Sheet1"
 
     # --- Column Names in Your Google Sheet ---
-    # You can change these values if your column headers are different.
+    # You can change these if your column headers are different.
     DATE_COLUMN_NAME="date"
     TEXT_COLUMN_NAME="text"
     TIME_COLUMN_NAME="time"
@@ -265,7 +150,7 @@ All settings for the application are controlled by a `.env` file.
 
 ### \#\#\# Manual Run (for Testing)
 
-Run the script once to immediately publish any posts that are due.
+You can run the script manually to immediately publish any posts that are due.
 
 ```bash
 python main.py
@@ -273,7 +158,7 @@ python main.py
 
 ### \#\#\# Automated Scheduling
 
-A helper script automatically sets up the scheduled tasks for both posting and token refreshing.
+A helper script is included to automatically set up scheduled tasks for both posting and token refreshing.
 
   * **To add the scheduled jobs:**
     ```bash
@@ -286,22 +171,36 @@ A helper script automatically sets up the scheduled tasks for both posting and t
 
 **Note for Windows Users:** You must run these commands from an **Administrator** Command Prompt or PowerShell.
 
+-----
 
+## Monitoring and Troubleshooting
 
+  * **Logs:** All actions, successes, and errors are recorded in `app.log`. Check this file first if something goes wrong.
+  * **Scheduled Task Issues (Windows):** If you suspect the scheduled task isn't running, open Command Prompt and run:
+    ```cmd
+    schtasks /query /tn "Content Poster Script" /v /fo list
+    ```
+    Look at the "Last Run Time" and "Last Result" to diagnose issues. If it fails to run, try moving the project to a different directory.
 
+-----
 
+## Ensuring Continuous Operation: Keep Awake Guide  कंप्यूटर
 
+Scheduled tasks can only run if the computer is **on and awake**. If your computer is turned off or in sleep mode, the script will not run. To ensure your content is always posted on time, you must configure your power settings to prevent the computer from sleeping automatically.
 
+### Windows
 
+1.  Go to **Settings** \> **System** \> **Power & sleep**.
+2.  Under "Sleep," set **"When plugged in, PC goes to sleep after"** to **Never**.
 
+### macOS
 
+1.  Go to **System Settings** \> **Displays** \> **Advanced**.
+2.  Enable **"Prevent automatic sleeping on power adapter when the display is off"**.
+3.  *(For older macOS versions)* Go to **System Preferences** \> **Energy Saver** and check "Prevent computer from sleeping automatically when the display is off".
 
+### Linux (Ubuntu/GNOME)
 
-
-
-
-FACEbook
-1. create app
-2. choose Threads API
-3. After app is created to go use cases and press `customize`. In `permissions and features` add threads_basic and threads_content_publish. Then go to `settings` under `permissions and features` and copy threads app id and threads app secret and paste them in .env file. After that a down find `User Token Generator` and press `Add or Remove Threads Testers`. On that page press `Add people` and choose `Threads Testers` and enter usernames that are needed for this test. After invite was sent. Go to `https://threads.com/settings/account` or in app `settings` -> `account` -> `website authorization` -> `invites` and accept invite.
-4. Go to `https://developers.facebook.com/tools/explorer/` and press `generate threads access token` then authorize in account that needs to be used and make sure that it is also assigned a role of Threads Tester in step 3. After that in `access token` field get generate Token and run command `python generate_initial_token.py` and paste your token when requested. Then paste user id that is can be collected from access token debugger, where you paste this newly created short-lived token.
+1.  Go to **Settings** \> **Power**.
+2.  Under "Power Saving Options," set **"Screen Blank"** to "Never".
+3.  Ensure **"Automatic Suspend"** is turned off.
