@@ -3,7 +3,7 @@ from sources.google_sheets import GoogleSheetsSource
 from processors.today_unpublished_filter import TodayAndUnpublishedFilter
 from processors.time_validator import TimeValidator
 from destinations.threads import ThreadsDestination
-from destinations.instagram import InstagramDestination  # <-- IMPORT NEW DESTINATION
+from destinations.instagram import InstagramDestination
 from config import settings
 from logger_setup import log
 
