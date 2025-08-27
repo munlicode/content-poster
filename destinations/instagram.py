@@ -125,7 +125,7 @@ class InstagramDestination(IDestination):
 
         all_media_urls = image_urls + video_urls
         media_count = len(all_media_urls)
-
+        log.info(f"Media Count: {media_count}")
         if media_count == 0:
             log.error("Instagram posts require at least one image or video.")
             return False
