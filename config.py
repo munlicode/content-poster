@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     FACEBOOK_API_VERSION: str = "v23.0"
     FACEBOOK_API_BASE_URL: str = "https://graph.facebook.com/"
 
-    THREADS_CLIENT_ID: str
-    THREADS_CLIENT_SECRET: str
+    APP_CLIENT_ID: str
+    APP_CLIENT_SECRET: str
 
     # --- Google Sheets Settings ---
     # Follow a guide on "Google Cloud Service Account" to get this JSON file.
@@ -29,10 +29,15 @@ class Settings(BaseSettings):
     # --- Column Header Names ---
     # The names of the columns in your worksheet that contain the data.
     # IMPORTANT: Your Google Sheet must have columns with these exact names.
-    DATE_COLUMN_NAME: str = "date"  # Expected format in sheet: YYYY-MM-DD
-    TEXT_COLUMN_NAME: str = "text"  # The content to be posted
-    TIME_COLUMN_NAME: str = "time"
-    STATUS_COLUMN_NAME: str = "status"
+    DATE_COLUMN_NAME: str = "Date"  # Expected format in sheet: YYYY-MM-DD
+    TEXT_COLUMN_NAME: str = "Text"  # The content to be posted
+    TIME_COLUMN_NAME: str = "Time"
+    STATUS_COLUMN_NAME: str = "Status"
+    IMAGE_URLS_COLUMN_NAME: str = "Image URLs"
+    VIDEO_URLS_COLUMN_NAME: str = "Video URLs"
+    HASHTAGS_COLUMN_NAME: str = "Hashtags"
+    POST_ON_INSTAGRAM: str = "Post on Instagram"
+    POST_ON_THREADS: str = "Post on Threads"
 
     # --- Advanced Settings ---
     # A list of times (in 24-hour HH:MM format) to fetch fresh data from Google Sheets.

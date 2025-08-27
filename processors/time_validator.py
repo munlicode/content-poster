@@ -1,34 +1,38 @@
 from datetime import datetime
+from dateutil import parser
+import logging
+
 from interfaces import IProcessor
 from config import settings
-from logger_setup import log
+
+log = logging.getLogger(__name__)
 
 
 class TimeValidator(IProcessor):
-    """From a list of posts, returns only those whose scheduled time has passed."""
+    """From a list of posts, returns only those whose scheduled date/time has passed."""
 
     def process(self, data: list) -> list:
         log.info("Validating scheduled times...")
         now = datetime.now()
         posts_due = []
 
-        today_str = now.strftime("%Y-%m-%d")
-
         for item in data:
-            post_time_str = str(item.get(settings.TIME_COLUMN_NAME, ""))
-            try:
-                # Combine today's date with the post's time to create a datetime object
-                scheduled_time = datetime.strptime(
-                    f"{today_str} {post_time_str}", "%Y-%m-%d %H:%M"
-                )
+            datetime_str = str(item.get(settings.TIME_COLUMN_NAME, "")).strip()
+            if not datetime_str:
+                log.warning("Skipping item with empty date/time field")
+                continue
 
-                # This is the critical filter: only add the post if its time is now or in the past
-                if now >= scheduled_time:
+            try:
+                # Parse flexibly any localized date/time string
+                scheduled_dt = parser.parse(datetime_str, fuzzy=True, dayfirst=True)
+
+                # Only add if scheduled time has passed
+                if now >= scheduled_dt:
                     posts_due.append(item)
-            except ValueError:
-                # Handle cases where the time format in the sheet is wrong
+
+            except (ValueError, TypeError) as e:
                 log.warning(
-                    f"Skipping item due to invalid time format: '{post_time_str}'"
+                    f"Skipping item due to invalid or unrecognized date/time format '{datetime_str}': {e}"
                 )
                 continue
 

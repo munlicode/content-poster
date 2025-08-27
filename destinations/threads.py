@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional, List
 import requests
 from interfaces import IDestination
 from logger_setup import log
@@ -9,87 +9,89 @@ import token_manager
 class ThreadsDestination(IDestination):
     """A destination that posts content to Meta's Threads API."""
 
+    def _build_caption(self, text: Optional[str], hashtags: Optional[str]) -> str:
+        """Combines text and hashtags into a single caption string."""
+        caption_parts: List[str] = []
+        if text:
+            caption_parts.append(text)
+        if hashtags:
+            # Ensure hashtags are space-separated and start with #
+            formatted_hashtags = " ".join(
+                f"#{tag.strip()}" for tag in hashtags.split(",") if tag.strip()
+            )
+            caption_parts.append(formatted_hashtags)
+        return "\n\n".join(caption_parts)
+
     def post(self, content: Dict) -> bool:
         """
-        Publishes a text post to Threads using a two-step process:
-        1. Create a media container with the text.
-        2. Publish the container to the user's Threads feed.
+        Publishes content to Threads. Supports text-only, text with one image,
+        or text with one video.
         """
-        token_data = token_manager.load_token()
-        current_token = token_data.get("access_token")
-        if not current_token:
-            log.error("Could not load access token. Cannot post.")
-            return False
+        all_tokens = token_manager.load_token()
+        token_data = all_tokens.get("threads", {})
 
         user_id = token_data.get("user_id")
-        if not user_id:
-            log.error("Could not find user id. Cannot post.")
+        access_token = token_data.get("access_token")
+
+        if not all([user_id, access_token]):
+            log.error("Missing user_id or access_token. Cannot post to Threads.")
             return False
 
-        text_to_post = content.get(settings.TEXT_COLUMN_NAME)
-        if not text_to_post:
-            log.error("No text found in content item to post.")
+        # Prepare content from the input dictionary
+        text = content.get(settings.TEXT_COLUMN_NAME)
+        hashtags = content.get(settings.HASHTAGS_COLUMN_NAME)
+        image_urls = content.get(settings.IMAGE_URLS_COLUMN_NAME, "").split(",")
+        video_urls = content.get(settings.VIDEO_URLS_COLUMN_NAME, "").split(",")
+
+        # Clean up empty strings from split
+        image_url = (
+            image_urls[0].strip() if image_urls and image_urls[0].strip() else None
+        )
+        video_url = (
+            video_urls[0].strip() if video_urls and video_urls[0].strip() else None
+        )
+
+        caption = self._build_caption(text, hashtags)
+
+        if not caption and not image_url and not video_url:
+            log.error("No content (text, image, or video) found to post to Threads.")
             return False
 
-        # --- Step 1: Create the media container ---
-        # UPDATED ENDPOINT: Now uses '/threads'
-        container_creation_url = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}/{user_id}/threads"
-        container_payload = {
-            "media_type": "TEXT",
-            "text": text_to_post,
-            "access_token": current_token,
+        # --- Build Payload ---
+        endpoint = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}/{user_id}/threads"
+        payload = {
+            "access_token": access_token,
         }
 
+        if image_url:
+            payload["media_type"] = "IMAGE"
+            payload["image_url"] = image_url
+            payload["text"] = caption
+        elif video_url:
+            payload["media_type"] = "VIDEO"
+            payload["video_url"] = video_url
+            payload["text"] = caption
+        else:
+            payload["media_type"] = "TEXT"
+            payload["text"] = caption
+
+        # --- Create and Publish in one step (New API behavior) ---
         try:
-            log.info(
-                f"Creating Threads media container for text: '{text_to_post[:30]}...'"
-            )
-            # The API documentation shows parameters in the URL, so we'll use `params` instead of `data`.
-            container_response = requests.post(
-                container_creation_url, params=container_payload, timeout=20
-            )
-            log.info(">>> ATTEMPTING REQUEST WITH 20-SECOND TIMEOUT... <<<")
-            container_response.raise_for_status()
-            log.info(">>> STATUS... <<<")
-            container_data = container_response.json()
-            log.info(">>> JSON... <<<")
-            container_id = container_data.get("id")
-            log.info(f">>> Container ID --- {container_id} <<<")
-            if not container_id:
-                log.error(
-                    f"Failed to create media container. Response: {container_data}"
-                )
+            log.info(f"Attempting to post to Threads: '{caption[:50]}...'")
+            response = requests.post(endpoint, params=payload, timeout=60)
+            response.raise_for_status()
+            response_data = response.json()
+            post_id = response_data.get("id")
+
+            if not post_id:
+                log.error(f"Threads post creation failed. Response: {response_data}")
                 return False
-        except requests.exceptions.Timeout as e:
-            log.error(f"The request to create a container timed out: {e}")
-            return False
-        except requests.exceptions.RequestException as e:
-            log.error(f"Error creating media container: {e}")
-            log.error(
-                f"Response body: {e.response.text if e.response else 'No response'}"
-            )
-            return False
 
-        # --- Step 2: Publish the media container ---
-        # UPDATED ENDPOINT: Now uses '/threads_publish'
-        publish_url = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}/{user_id}/threads_publish"
-        publish_payload = {
-            "creation_id": container_id,
-            "access_token": current_token,
-        }
-
-        try:
-            log.info(f"Publishing container ID: {container_id}")
-            # Using `params` here as well to match the documentation's cURL examples.
-            publish_response = requests.post(publish_url, params=publish_payload)
-            publish_response.raise_for_status()
-            publish_data = publish_response.json()
-            log.info(
-                f"🚀 Successfully published to Threads! Post ID: {publish_data.get('id')}"
-            )
+            log.info(f"🚀 Successfully published to Threads! Post ID: {post_id}")
             return True
+
         except requests.exceptions.RequestException as e:
-            log.error(f"Error publishing media container: {e}")
+            log.error(f"Error posting to Threads: {e}")
             log.error(
                 f"Response body: {e.response.text if e.response else 'No response'}"
             )

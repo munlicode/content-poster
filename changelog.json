@@ -1,0 +1,30 @@
+[
+  {
+    "version": "0.1.0",
+    "features": [
+      {
+        "name": "Threads API",
+        "description": "Posting to Threads API."
+      },
+      {
+        "name": "Google Sheets API",
+        "description": "Collecting posts from Google Sheets."
+      }
+    ],
+    "date": "27-08-2025"
+  },
+  {
+    "version": "0.2.0",
+    "features": [
+      {
+        "name": "Instagram API",
+        "description": "Posting to Instagram API."
+      },
+      {
+        "name": "Posting with additional values",
+        "description": "Posting with Images, Videos, hashtags, etc."
+      }
+    ],
+    "date": "28-08-2025"
+  }
+]

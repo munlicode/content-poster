@@ -26,8 +26,14 @@ def generate_and_save_tokens():
 
     # --- Step 2: Exchange Short-Lived for a Long-Lived Token ---
     log.info("\n--- Step 2: Exchanging code for a long-lived token... ---")
-    refresh_url = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}/refresh_access_token"
-    payload = {"grant_type": "th_refresh_token", "access_token": access_token}
+    refresh_url = (
+        f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}/access_token"
+    )
+    payload = {
+        "grant_type": "th_exchange_token",
+        "client_secret": settings.APP_CLIENT_SECRET,
+        "access_token": access_token,
+    }
 
     try:
         response = requests.get(refresh_url, params=payload)
@@ -41,7 +47,7 @@ def generate_and_save_tokens():
             log.error(f"Refresh response was invalid: {new_token_data}")
             return
 
-        token_manager.save_token(long_lived_token, expires_in, user_id)
+        token_manager.save_token("threads", long_lived_token, expires_in, user_id)
         log.info(
             "Your long-lived access token and user ID have been saved to token_storage.json."
         )
