@@ -19,6 +19,7 @@ def setup_sheet_headers():
         settings.VIDEO_URLS_COLUMN_NAME,
         settings.HASHTAGS_COLUMN_NAME,
         settings.HASHTAGS_WITH_TEXT_COLUMN_NAME,
+        settings.DO_NOT_POST_MEDIA_ON_THREADS_COLUMN_NAME,
         settings.POST_ON_INSTAGRAM_COLUMN_NAME,
         settings.POST_ON_THREADS_COLUMN_NAME,
     ]
