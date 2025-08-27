@@ -67,8 +67,8 @@ def run_pipeline():
         post_text = item.get("text", "No text provided")
         log.info(f"Processing post for row {row_number}: '{post_text[:50]}...'")
 
-        post_to_threads = item.get(settings.POST_ON_THREADS, False)
-        post_to_instagram = item.get(settings.POST_ON_INSTAGRAM, False)
+        post_to_threads = item.get(settings.POST_ON_THREADS_COLUMN_NAME, False)
+        post_to_instagram = item.get(settings.POST_ON_INSTAGRAM_COLUMN_NAME, False)
 
         # Track the success status for each platform
         threads_success = None

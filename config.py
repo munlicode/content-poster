@@ -36,8 +36,10 @@ class Settings(BaseSettings):
     IMAGE_URLS_COLUMN_NAME: str = "Image URLs"
     VIDEO_URLS_COLUMN_NAME: str = "Video URLs"
     HASHTAGS_COLUMN_NAME: str = "Hashtags"
-    POST_ON_INSTAGRAM: str = "Post on Instagram"
-    POST_ON_THREADS: str = "Post on Threads"
+    HASHTAGS_WITH_TEXT_COLUMN_NAME: str = "Hashtags with TEXT"
+    DO_NOT_POST_MEDIA_ON_THREADS_COLUMN_NAME: str = "Do Not Post Media on Threads"
+    POST_ON_INSTAGRAM_COLUMN_NAME: str = "Post on Instagram"
+    POST_ON_THREADS_COLUMN_NAME: str = "Post on Threads"
 
     # --- Advanced Settings ---
     # A list of times (in 24-hour HH:MM format) to fetch fresh data from Google Sheets.
