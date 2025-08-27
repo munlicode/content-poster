@@ -12,9 +12,9 @@ def setup_sheet_headers():
     # --- 1. Define the headers you want to create ---
     headers = [
         settings.DATE_COLUMN_NAME,
-        settings.TEXT_COLUMN_NAME,
         settings.TIME_COLUMN_NAME,
         settings.STATUS_COLUMN_NAME,
+        settings.TEXT_COLUMN_NAME,
         settings.IMAGE_URLS_COLUMN_NAME,
         settings.VIDEO_URLS_COLUMN_NAME,
         settings.HASHTAGS_COLUMN_NAME,
