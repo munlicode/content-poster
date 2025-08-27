@@ -50,9 +50,10 @@ class Settings(BaseSettings):
         {  # if Applyable means that it is used already, otherwise it means that it might be implemented
             "published": "Published",  # Applyable
             "draft": "Draft",  # Not Applyable --- Setted by user in case if he wants to set it as draft and do not publish until changed to None
-            "pending": "Pending",  # Not Applyable --- To mark that task was accepted and awaits time of execution
+            "pending": "Pending",  # Applyable
             "error": "Error",  # Not Applyable --- In case of when errors will be handled
             "failed": "Failed",  # Applyable
+            "publishing": "Publishing",  # Applyable
             "cancelled": "Cancelled",  # Not Applyable --- Setted by user in case if he wants to cancel publishing
         }
     )

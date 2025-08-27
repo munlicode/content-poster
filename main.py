@@ -1,134 +1,113 @@
-import cache_manager
+import os
+import sys
+from datetime import datetime
 from sources.google_sheets import GoogleSheetsSource
-from processors.today_unpublished_filter import TodayAndUnpublishedFilter
 from processors.time_validator import TimeValidator
 from destinations.threads import ThreadsDestination
 from destinations.instagram import InstagramDestination
 from config import settings
 from logger_setup import log
 
+LOCK_FILE = "pipeline.lock"
+
 
 def run_pipeline():
     """
-    Executes the full pipeline to fetch, schedule, post, and update content status.
+    Executes the full pipeline with script and application-level locking
+    to prevent race conditions and duplicate posts.
     """
     log.info("\n--- Starting Content Pipeline Run ---")
 
-    # 1. Load cache and decide if a fresh data fetch is needed
-    cache = cache_manager.load_cache()
-    fetch_fresh_data = cache_manager.should_fetch_fresh_data(
-        cache.get("last_fetch_datetime")
-    )
-
+    # 1. Fetch all posts that are pending
     source = GoogleSheetsSource()
-    pending_posts = cache.get("pending_posts", [])
+    all_data = source.get_data()
 
-    # 2. If a fetch is due, connect to the Google Sheets API
-    if fetch_fresh_data:
-        log.info("Fetching fresh data from Google Sheets.")
-        all_data = source.get_data()
-        if all_data:
-            initial_filter = TodayAndUnpublishedFilter()
-            pending_posts = initial_filter.process(all_data)
-            cache_manager.save_cache(pending_posts)
-            log.info(f"Found {len(pending_posts)} pending posts for today.")
-        else:
-            log.warning(
-                "Could not retrieve data from source. Using existing cache if available."
-            )
-    else:
-        log.info("Using cached data. No fresh API fetch needed.")
+    # Filter for posts that are ready to be considered for publishing
+    pending_status = settings.STATUS_OPTIONS.get("pending", "Pending")
+    pending_posts = [
+        post
+        for post in all_data
+        if post.get(settings.STATUS_COLUMN_NAME, "").strip() in [pending_status, ""]
+    ]
 
     if not pending_posts:
-        log.info("No pending posts for today. Exiting.")
-        log.info("--- Pipeline Finished ---")
+        log.info("No pending posts found. Nothing to do.")
         return
 
-    # 3. Filter for posts whose scheduled time has passed
+    # 2. From the pending list, find posts whose scheduled time has passed
     time_validator = TimeValidator()
     posts_to_publish = time_validator.process(pending_posts)
 
     if not posts_to_publish:
         log.info("No posts are due to be published at this time.")
-        log.info("--- Pipeline Finished ---")
         return
 
-    log.info(f"Found {len(posts_to_publish)} post(s) to publish now.")
+    # 3. APPLICATION-LEVEL LOCK: Mark posts as "Publishing" in the Google Sheet
+    log.info(f"Found {len(posts_to_publish)} post(s) to publish. Locking them now.")
+    row_numbers_to_lock = [item.get("row_number") for item in posts_to_publish]
+    source.update_status_batch(
+        row_numbers_to_lock, settings.STATUS_OPTIONS["publishing"]
+    )
 
-    # 4. Initialize destinations
+    # 4. Initialize destinations and process each "locked" post
     threads_dest = ThreadsDestination()
     instagram_dest = InstagramDestination()
 
-    updated_pending_posts = pending_posts[:]
-
-    # 5. Process and publish each due post
     for item in posts_to_publish:
         row_number = item.get("row_number")
-        post_text = item.get("text", "No text provided")
-        log.info(f"Processing post for row {row_number}: '{post_text[:50]}...'")
+        log.info(f"Processing locked post from row {row_number}...")
 
-        post_to_threads = item.get(settings.POST_ON_THREADS_COLUMN_NAME, False)
-        post_to_instagram = item.get(settings.POST_ON_INSTAGRAM_COLUMN_NAME, False)
+        post_to_threads = str(
+            item.get(settings.POST_ON_THREADS_COLUMN_NAME, "")
+        ).strip().lower() in ["true", "1"]
+        post_to_instagram = str(
+            item.get(settings.POST_ON_INSTAGRAM_COLUMN_NAME, "")
+        ).strip().lower() in ["true", "1"]
 
-        # Track the success status for each platform
         threads_success = None
         instagram_success = None
 
         if post_to_threads:
-            log.info(f"Attempting to post to Threads for row {row_number}.")
             threads_success = threads_dest.post(item)
-            log.info(f"Threads post success: {threads_success}")
-
         if post_to_instagram:
-            log.info(f"Attempting to post to Instagram for row {row_number}.")
             instagram_success = instagram_dest.post(item)
-            log.info(f"Instagram post success: {instagram_success}")
 
-        # Determine the final status and whether to remove from cache
+        # Determine the final status
         is_fully_published = True
-        final_status = settings.STATUS_OPTIONS["published"]
-
-        # Check Threads outcome
         if post_to_threads and not threads_success:
             is_fully_published = False
-            final_status = settings.STATUS_OPTIONS["failed"]
-
-        # Check Instagram outcome
         if post_to_instagram and not instagram_success:
             is_fully_published = False
-            final_status = settings.STATUS_OPTIONS["failed"]
 
-        # If the post wasn't intended for either, do nothing
-        if not post_to_threads and not post_to_instagram:
-            log.warning(
-                f"Row {row_number} was due but not flagged for Threads or Instagram. Skipping."
-            )
-            continue
-
-        # Update the source (Google Sheet) with the final status
+        # Update the row with its final status
+        final_status = (
+            settings.STATUS_OPTIONS["published"]
+            if is_fully_published
+            else settings.STATUS_OPTIONS["failed"]
+        )
         source.update_status(row_number, final_status)
-        log.info(f"Updated Google Sheet row {row_number} with status: '{final_status}'")
-
-        # If all intended publications were successful, remove the post from the pending list
-        if is_fully_published:
-            log.info(
-                f"Post for row {row_number} was successfully published to all destinations."
-            )
-            updated_pending_posts = [
-                p for p in updated_pending_posts if p.get("row_number") != row_number
-            ]
-        else:
-            log.warning(
-                f"Post for row {row_number} failed on at least one destination. It will be retried."
-            )
-
-    # 6. If any posts were successfully processed, update the cache
-    if len(updated_pending_posts) < len(pending_posts):
-        log.info("Updating cache with remaining pending posts.")
-        cache_manager.save_cache(updated_pending_posts)
 
     log.info("--- Pipeline Finished ---")
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    # SCRIPT-LEVEL LOCK: Prevents the script from running more than once at a time.
+    if os.path.exists(LOCK_FILE):
+        log.warning(
+            f"Lock file '{LOCK_FILE}' exists. Another instance may be running. Exiting."
+        )
+        sys.exit(1)
+
+    try:
+        # Create the lock file to signal the script is running
+        with open(LOCK_FILE, "w") as f:
+            f.write(str(datetime.now()))
+
+        run_pipeline()
+
+    finally:
+        # CRITICAL: Always remove the lock file when the script is done,
+        # even if it crashes.
+        if os.path.exists(LOCK_FILE):
+            os.remove(LOCK_FILE)
+            log.info("Lock file removed.")
