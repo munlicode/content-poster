@@ -238,3 +238,15 @@ Scheduled tasks can only run if the computer is **on and awake**. To ensure your
 
 1.  Go to **Settings** \> **Power**.
 2.  Under "Power Saving Options," set **"Screen Blank"** to "Never" and ensure **"Automatic Suspend"** is turned off.
+
+
+
+
+
+
+
+
+
+
+
+NOTES: for threads only first image or video are published.

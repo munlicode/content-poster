@@ -18,9 +18,18 @@ class TimeValidator(IProcessor):
 
         for item in data:
             datetime_str = str(item.get(settings.TIME_COLUMN_NAME, "")).strip()
+
+            # If TIME is empty but DATE exists, skip time validation but continue
             if not datetime_str:
-                log.warning("Skipping item with empty date/time field")
-                continue
+                if settings.DATE_COLUMN_NAME not in item:
+                    log.warning(
+                        "Skipping item with empty date/time field and no date column"
+                    )
+                    continue
+                else:
+                    # Just continue loop, let other processors handle date logic
+                    posts_due.append(item)
+                    continue
 
             try:
                 # Parse flexibly any localized date/time string

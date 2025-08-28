@@ -22,11 +22,32 @@ def run_pipeline():
     source = GoogleSheetsSource()
     all_data = source.get_data()
 
-    # Filter for posts that are ready to be considered for publishing
+    # 1. Filter for VALID posts (your new filter)
+    valid_posts = [
+        post
+        for post in all_data
+        if post.get(settings.DATE_COLUMN_NAME)
+        and post.get(settings.TIME_COLUMN_NAME)
+        and post.get(settings.TEXT_COLUMN_NAME)
+        and (
+            str(post.get(settings.POST_ON_INSTAGRAM_COLUMN_NAME, "")).strip().upper()
+            == "TRUE"
+            or str(post.get(settings.POST_ON_THREADS_COLUMN_NAME, "")).strip().upper()
+            == "TRUE"
+        )
+    ]
+    log.info(valid_posts)
+    log.info(f"Found {len(valid_posts)} valid row(s) with all required data.")
+
+    if not valid_posts:
+        log.info("No valid posts found. Nothing to do.")
+        return
+
+    # 2. From VALID posts, filter for those with a PENDING status
     pending_status = settings.STATUS_OPTIONS.get("pending", "Pending")
     pending_posts = [
         post
-        for post in all_data
+        for post in valid_posts  # <-- FIX: Use the 'valid_posts' list
         if post.get(settings.STATUS_COLUMN_NAME, "").strip() in [pending_status, ""]
     ]
 
@@ -34,15 +55,17 @@ def run_pipeline():
         log.info("No pending posts found. Nothing to do.")
         return
 
-    # 2. From the pending list, find posts whose scheduled time has passed
+    # 3. From PENDING posts, filter for those whose time is DUE
     time_validator = TimeValidator()
-    posts_to_publish = time_validator.process(pending_posts)
+    posts_to_publish = time_validator.process(
+        pending_posts
+    )  # <-- FIX: Use the 'pending_posts' list
 
     if not posts_to_publish:
         log.info("No posts are due to be published at this time.")
         return
 
-    # 3. APPLICATION-LEVEL LOCK: Mark posts as "Publishing" in the Google Sheet
+    # 4. Now, lock and process the final, correctly filtered list
     log.info(f"Found {len(posts_to_publish)} post(s) to publish. Locking them now.")
     row_numbers_to_lock = [item.get("row_number") for item in posts_to_publish]
     source.update_status_batch(
@@ -56,37 +79,62 @@ def run_pipeline():
     for item in posts_to_publish:
         row_number = item.get("row_number")
         log.info(f"Processing locked post from row {row_number}...")
+        try:
+            post_to_threads = (
+                str(item.get(settings.POST_ON_THREADS_COLUMN_NAME, "")).strip().upper()
+                == "TRUE"
+            )
+            post_to_instagram = (
+                str(item.get(settings.POST_ON_INSTAGRAM_COLUMN_NAME, ""))
+                .strip()
+                .upper()
+                == "TRUE"
+            )
 
-        post_to_threads = str(
-            item.get(settings.POST_ON_THREADS_COLUMN_NAME, "")
-        ).strip().lower() in ["true", "1"]
-        post_to_instagram = str(
-            item.get(settings.POST_ON_INSTAGRAM_COLUMN_NAME, "")
-        ).strip().lower() in ["true", "1"]
+            # --- BUG FIX STARTS HERE ---
 
-        threads_success = None
-        instagram_success = None
+            # 1. Check if this post needs to be published anywhere at all.
+            if not post_to_threads and not post_to_instagram:
+                log.warning(
+                    f"Row {row_number} is due but not marked for any platform. "
+                    "Reverting status to Pending."
+                )
+                # Revert the lock since no action is being taken
+                source.update_status(row_number, settings.STATUS_OPTIONS["pending"])
+                continue  # Skip to the next post
 
-        if post_to_threads:
-            threads_success = threads_dest.post(item)
-        if post_to_instagram:
-            instagram_success = instagram_dest.post(item)
+            # --- BUG FIX ENDS HERE ---
 
-        # Determine the final status
-        is_fully_published = True
-        if post_to_threads and not threads_success:
-            is_fully_published = False
-        if post_to_instagram and not instagram_success:
-            is_fully_published = False
+            threads_success = None
+            instagram_success = None
 
-        # Update the row with its final status
-        final_status = (
-            settings.STATUS_OPTIONS["published"]
-            if is_fully_published
-            else settings.STATUS_OPTIONS["failed"]
-        )
-        source.update_status(row_number, final_status)
+            if post_to_instagram:
+                instagram_success = instagram_dest.post(item)
+            if post_to_threads:
+                threads_success = threads_dest.post(item)
 
+            # Determine the final status
+            is_fully_published = True
+            if post_to_instagram and not instagram_success:
+                is_fully_published = False
+            if post_to_threads and not threads_success:
+                is_fully_published = False
+
+            # Update the row with its final status
+            final_status = (
+                settings.STATUS_OPTIONS["published"]
+                if is_fully_published
+                else settings.STATUS_OPTIONS["failed"]
+            )
+            source.update_status(row_number, final_status)
+        except Exception as e:
+            # If any unexpected error happens, log it and mark the post as failed
+            log.error(
+                f"A critical error occurred while processing row {row_number}: {e}",
+                exc_info=True,
+            )
+            source.update_status(row_number, settings.STATUS_OPTIONS["failed"])
+            continue  # Move to the next post
     log.info("--- Pipeline Finished ---")
 
 

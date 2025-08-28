@@ -62,8 +62,6 @@ class GoogleSheetsSource(IDataSource):
             log.error(f"ERROR: Could not update sheet. Details: {e}")
             return False
 
-    # FIX: The duplicate 'update_status' method has been removed.
-
     def update_status_batch(self, row_numbers: list, status: str) -> bool:
         """
         Updates the status for a list of rows in a single API call.

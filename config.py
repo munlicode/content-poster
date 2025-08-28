@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     IMAGE_URLS_COLUMN_NAME: str = "Image URLs"
     VIDEO_URLS_COLUMN_NAME: str = "Video URLs"
     HASHTAGS_COLUMN_NAME: str = "Hashtags"
-    HASHTAGS_WITH_TEXT_COLUMN_NAME: str = "Hashtags with TEXT"
-    DO_NOT_POST_MEDIA_ON_THREADS_COLUMN_NAME: str = "Do Not Post Media on Threads"
+    HASHTAGS_IN_CAPTION_COLUMN_NAME: str = "Hashtags with TEXT"
+    THREADS_TEXT_ONLY_COLUMN_NAME: str = "Do Not Post Media on Threads"
     POST_ON_INSTAGRAM_COLUMN_NAME: str = "Post on Instagram"
     POST_ON_THREADS_COLUMN_NAME: str = "Post on Threads"
 
