@@ -1,12 +1,13 @@
 import os
 import time
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List
 import requests
 from interfaces import IDestination
 from logger_setup import log
 from config import settings
 import token_manager
 from processors.parse_clean_urls import parse_and_clean_urls
+from helpers import upload_to_github
 
 
 class InstagramDestination(IDestination):
@@ -27,17 +28,7 @@ class InstagramDestination(IDestination):
         """Formats a comma-separated string of hashtags into a space-separated list."""
         if not hashtags:
             return None
-        return hashtags  # FIXME: COMMENTING OUT hastags formating
-        formatted_tags = []
-        for tag in hashtags.split(","):
-            tag = tag.strip()
-            if tag:
-                # Add '#' if it's not already there, but don't add a second one.
-                if not tag.startswith("#"):
-                    formatted_tags.append(f"#{tag}")
-                else:
-                    formatted_tags.append(tag)
-        return " ".join(formatted_tags)
+        return hashtags
 
     # MODIFIED: This function now only handles the main text for the caption.
     def _build_caption(
@@ -85,6 +76,7 @@ class InstagramDestination(IDestination):
             log.info(f"Publishing container ID: {creation_id}")
             response = requests.post(endpoint, params=payload)
             response.raise_for_status()
+            print(response.json())
             post_id = response.json().get("id")
             log.info(f"🚀 Successfully published to Instagram! Post ID: {post_id}")
             return post_id
@@ -133,7 +125,7 @@ class InstagramDestination(IDestination):
         ).strip()
 
         if local_image_path:
-            imgur_url = _upload_to_imgur(local_image_path)
+            imgur_url = upload_to_github(local_image_path)
             if imgur_url:
                 image_urls.append(imgur_url)
             else:
@@ -155,7 +147,7 @@ class InstagramDestination(IDestination):
             media_type, media_source = all_media_items[0]
             if media_type == "image":
                 final_container_id = self._upload_media_and_get_container_id(
-                    media_source
+                    media_source, False
                 )
             elif media_type == "local_video":
                 final_container_id = self._upload_video_from_local_file(
@@ -171,7 +163,9 @@ class InstagramDestination(IDestination):
             for media_type, media_source in all_media_items:
                 container_id = None
                 if media_type == "image":
-                    container_id = self._upload_media_and_get_container_id(media_source)
+                    container_id = self._upload_media_and_get_container_id(
+                        media_source, False
+                    )
                 elif media_type == "local_video":
                     container_id = self._upload_video_from_local_file(
                         media_source, is_carousel_item=True
@@ -211,137 +205,6 @@ class InstagramDestination(IDestination):
 
         return False  # The main post failed
 
-    def post(self, content: Dict) -> bool:
-        """Publishes content to Instagram and handles hashtags as a first comment."""
-        if not all([self.user_id, self.access_token]):
-            log.error("Missing user_id or access_token. Cannot post to Instagram.")
-            return False
-
-        # --- 1. Prepare Content ---
-        text = content.get(settings.TEXT_COLUMN_NAME)
-        hashtags = content.get(settings.HASHTAGS_COLUMN_NAME)
-        # Check the flag. If the column is missing or False, default to posting as a comment.
-        # It's only True if the user explicitly sets it to TRUE/true/1 in the sheet.
-        post_hashtags_with_text = (
-            str(content.get(settings.HASHTAGS_IN_CAPTION_COLUMN_NAME, ""))
-            .strip()
-            .upper()
-            == "TRUE"
-        )
-
-        caption = self._build_caption(
-            text, hashtags, include_hashtags=post_hashtags_with_text
-        )
-
-        # Clean up each resulting URL and filter out any empty strings
-        image_urls = parse_and_clean_urls(
-            content.get(settings.IMAGE_URLS_COLUMN_NAME, "")
-        )
-
-        video_urls = parse_and_clean_urls(
-            content.get(settings.VIDEO_URLS_COLUMN_NAME, "")
-        )
-
-        optional_params: Dict[str, Any] = {}  # etc.
-
-        all_media_urls = image_urls + video_urls
-        media_count = len(all_media_urls)
-
-        if media_count == 0:
-            log.error("Instagram posts require at least one image or video.")
-            return False
-
-        # --- 2. Create Media Container ---
-        final_container_id = None
-        # (The entire 'if media_count == 1:' and 'elif media_count > 1:' logic remains the same)
-        if media_count == 1:
-            log.info("Processing as a single media post.")
-            single_media_url = all_media_urls[0]
-            is_video = single_media_url in video_urls
-
-            endpoint = f"{self.base_url}/{self.user_id}/media"
-            params = {"access_token": self.access_token}
-            payload = {
-                "caption": caption,
-                "media_type": "REELS" if is_video else "IMAGE",
-                **optional_params,
-            }
-
-            if is_video:
-                payload["video_url"] = single_media_url
-            else:
-                payload["image_url"] = single_media_url
-
-            try:
-                response = requests.post(
-                    endpoint, params=params, json=payload, timeout=300
-                )
-                response.raise_for_status()
-                print(response.json())
-                final_container_id = self._check_container_status(
-                    response.json().get("id")
-                )
-            except requests.exceptions.RequestException as e:
-                log.error(f"Error: {e}")
-                log.error(
-                    f"Error creating single media container: {e.response.text if e.response else e}"
-                )
-                return False
-        elif media_count > 1:
-            log.info("Processing as a carousel post.")
-            media_container_ids: List[str] = []
-            uploaded_url_to_id_map: Dict[str, str] = {}  # Cache for uploaded URLs
-
-            all_media_items = [("image", url) for url in image_urls] + [
-                ("video", url) for url in video_urls
-            ]
-
-            for media_type, url in all_media_items:
-                if url in uploaded_url_to_id_map:
-                    log.info(f"Reusing container ID for duplicate URL: {url}")
-                    media_container_ids.append(uploaded_url_to_id_map[url])
-                    continue
-
-                is_video = media_type == "video"
-                container_id = self._upload_media_and_get_container_id(
-                    url, is_video=is_video
-                )
-
-                if container_id:
-                    media_container_ids.append(container_id)
-                    uploaded_url_to_id_map[url] = container_id
-                else:
-                    log.error(f"Failed to upload media item for carousel: {url}")
-                    break
-
-            if len(media_container_ids) == media_count:
-                final_container_id = self._create_carousel_container_id(
-                    media_container_ids, caption, {}
-                )
-            else:
-                log.error("Failed to upload one or more media items for the carousel.")
-                return False
-
-        # --- 3. Publish and Post First Comment ---
-        if not final_container_id:
-            log.error("Could not create a final container for publishing.")
-            return False
-
-        # Publish the container and get the post_id
-        post_id = self._publish_container(final_container_id)
-
-        if post_id:
-            # If the post was successful AND we are supposed to post hashtags as a comment...
-            if not post_hashtags_with_text and hashtags:
-                formatted_hashtags = self._format_hashtags(hashtags)
-                if formatted_hashtags:
-                    # Give the API a moment before posting the comment
-                    time.sleep(3)
-                    self._post_first_comment(post_id, formatted_hashtags)
-            return True  # The main post was successful
-
-        return False  # The main post failed
-
     def _check_container_status(self, creation_id: str) -> Optional[str]:
         """Polls the container status until it's finished or fails, with improved error logging."""
         # Query for both status_code and the specific error_message field
@@ -353,6 +216,7 @@ class InstagramDestination(IDestination):
                 params = {"fields": fields_to_check, "access_token": self.access_token}
                 response = requests.get(status_url, params=params)
                 response.raise_for_status()
+                print(response.json())
                 status_data = response.json()
                 status = status_data.get("status_code")
 
@@ -397,6 +261,7 @@ class InstagramDestination(IDestination):
             log.info(f"Uploading video from URL: {video_url}")
             response = requests.post(endpoint, params=params, timeout=300)
             response.raise_for_status()
+            print(response.json())
             creation_id = response.json().get("id")
             return self._check_container_status(creation_id)
         except requests.exceptions.RequestException as e:
@@ -467,6 +332,7 @@ class InstagramDestination(IDestination):
             log.info(f"Creating carousel container with media IDs: {media_ids}")
             response = requests.post(endpoint, params=payload)
             response.raise_for_status()
+            print(response.json())
             creation_id = response.json().get("id")
             return self._check_container_status(creation_id)
         except requests.exceptions.RequestException as e:
@@ -497,6 +363,7 @@ class InstagramDestination(IDestination):
             )
             response = requests.post(endpoint, params=payload, timeout=300)
             response.raise_for_status()
+            print(response.json())
             creation_id = response.json().get("id")
             return self._check_container_status(creation_id)
         except requests.exceptions.RequestException as e:

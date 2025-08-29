@@ -29,6 +29,8 @@ def setup_sheet_headers():
         settings.THREADS_TEXT_ONLY_COLUMN_NAME,
         settings.POST_ON_INSTAGRAM_COLUMN_NAME,
         settings.POST_ON_THREADS_COLUMN_NAME,
+        settings.LOCAL_IMAGE_PATH_COLUMN_NAME,
+        settings.LOCAL_VIDEO_PATH_COLUMN_NAME,
     ]
 
     # --- 1. Define columns for specific formatting ---

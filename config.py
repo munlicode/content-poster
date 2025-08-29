@@ -4,6 +4,9 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
+    GITHUB_USERNAME: Optional[str] = None
+    GITHUB_REPO_NAME: Optional[str] = None
+    GITHUB_TOKEN: Optional[str] = None
 
     CACHE_FILE_PATH: str = "post_cache.json"
 
@@ -40,6 +43,8 @@ class Settings(BaseSettings):
     THREADS_TEXT_ONLY_COLUMN_NAME: str = "Do Not Post Media on Threads"
     POST_ON_INSTAGRAM_COLUMN_NAME: str = "Post on Instagram"
     POST_ON_THREADS_COLUMN_NAME: str = "Post on Threads"
+    LOCAL_IMAGE_PATH_COLUMN_NAME: str = "Local Image Path"
+    LOCAL_VIDEO_PATH_COLUMN_NAME: str = "Local Video Path"
 
     # --- Advanced Settings ---
     # A list of times (in 24-hour HH:MM format) to fetch fresh data from Google Sheets.
