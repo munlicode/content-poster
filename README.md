@@ -250,3 +250,175 @@ Scheduled tasks can only run if the computer is **on and awake**. To ensure your
 
 
 NOTES: for threads only first image or video are published.
+
+
+
+
+
+
+
+
+
+
+
+
+Of course. A good `README` file is essential for any project. This document will serve as a complete user manual, guiding a new user through the entire process of setting up, configuring, and running the content scheduler.
+
+Here is the complete documentation for your `README.md` file. You can copy and paste this directly into a new `README.md` file in your project's main directory.
+
+-----
+
+# Content Scheduler for Instagram & Threads
+
+This project automates the process of posting content to Instagram and Threads. It reads a schedule and content details from a Google Sheet, sources media from web URLs or your local computer, and posts them at the specified times.
+
+It uses the GitHub API as a temporary host for local media files to generate the public URLs required by the Meta APIs.
+
+## Features
+
+  * **Multi-Platform:** Post to Instagram and/or Threads.
+  * **Flexible Scheduling:** Schedule posts for any future date and time.
+  * **Versatile Media Sourcing:** Use media from public web URLs or directly from your local computer's file system.
+  * **Rich Post Types:** Supports single image/video posts and multi-media carousels.
+  * **Hashtag Control:** Automatically post hashtags in the main caption or as a clean first comment on Instagram.
+  * **Fully Automated:** Runs on a schedule using cron (Linux/macOS) or Task Scheduler (Windows).
+  * **Self-Cleaning:** Includes a utility script to periodically clean up the temporary media files hosted on GitHub.
+
+-----
+
+## Prerequisites
+
+Before you begin, you will need:
+
+  * Python 3.8 or higher.
+  * A **Google Account** to create and use a Google Sheet.
+  * A **Meta Developer Account** with a configured App.
+  * An **Instagram Professional Account** linked to a Facebook Page.
+  * A **GitHub Account**.
+
+-----
+
+## ⚙️ Setup Instructions
+
+Follow these steps carefully to set up the entire project.
+
+### 1\. Clone the Repository
+
+First, clone this project to your local machine.
+
+```bash
+git clone <your-repository-url>
+cd <repository-name>
+```
+
+### 2\. Install Dependencies
+
+Create a virtual environment and install the required Python libraries.
+
+```bash
+# Create and activate the virtual environment
+python -m venv venv
+# On Windows:
+# venv\Scripts\activate
+# On macOS/Linux:
+# source venv/bin/activate
+
+# Install libraries from requirements.txt
+pip install -r requirements.txt
+```
+
+*(You will need to create a `requirements.txt` file containing `requests`, `google-api-python-client`, `google-auth-oauthlib`, `gspread`, and `python-crontab`)*.
+
+### 3\. Set Up Google Sheets API
+
+Your script needs API access to read your Google Sheet.
+
+1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2.  Create a new project.
+3.  Enable the **Google Sheets API** and the **Google Drive API**.
+4.  Create credentials for a **Service Account**.
+5.  Download the generated JSON key file and rename it to **`credentials.json`**. Place this file in the root directory of your project.
+6.  Open the `credentials.json` file, find the `client_email` address, and copy it.
+7.  Create your Google Sheet for scheduling, and **share it** with the `client_email` you just copied, giving it "Editor" permissions.
+
+### 4\. Set Up Meta APIs (Instagram & Threads)
+
+1.  Go to [Meta for Developers](https://developers.facebook.com/) and create a new App of type "Business".
+2.  From the App Dashboard, add the **"Instagram Graph API"** and **"Threads API"** products.
+3.  Use the **Graph API Explorer** tool to generate a long-lived User Access Token. Make sure to grant the following permissions:
+      * `instagram_basic`
+      * `instagram_content_publish`
+      * `pages_read_engagement`
+4.  You will need your **Instagram User ID** and the **Threads User ID**. These can be found using the Graph API Explorer.
+
+### 5\. Set Up GitHub API
+
+The script will use a GitHub repository to store your local media files temporarily.
+
+1.  Create a new **Public** GitHub repository. This will be your media storage.
+2.  Go to your GitHub **Settings \> Developer settings \> Personal access tokens \> Tokens (classic)**.
+3.  Generate a new token with the full **`repo`** scope.
+4.  Copy the token immediately and save it.
+
+### 6\. Configure the Script
+
+1.  Rename `config.py.example` to **`config.py`**.
+2.  Open `config.py` and fill in all the required values:
+      * `GOOGLE_SHEET_NAME`: The exact name of your Google Sheet.
+      * `INSTAGRAM_USER_ID`, `INSTAGRAM_ACCESS_TOKEN`, etc.
+      * `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, etc.
+      * `GITHUB_USERNAME`, `GITHUB_REPO_NAME`, `GITHUB_TOKEN`.
+
+### 7\. Schedule the Script
+
+Run the setup script to add the main poster to your system's scheduler. It will run every minute.
+
+```bash
+python setup_scheduler.py add
+```
+
+-----
+
+## 📝 Usage: The Google Sheet
+
+To schedule a post, add a new row to your Google Sheet and fill in the columns according to the table below.
+
+| Column Name                     | Required? | Description                                                                                                                                                             | Example                                                                          |
+| ------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `Date`                          | **Yes** | The date the post should go live. Format: `YYYY-MM-DD`.                                                                                                                  | `2025-12-25`                                                                     |
+| `Time`                          | **Yes** | The time the post should go live (in 24-hour format).                                                                                                                   | `18:30`                                                                          |
+| `Status`                        | No        | The script updates this automatically (`Publishing`, `Published`, `Failed`). Leave blank for new posts.                                                                 | `Published`                                                                      |
+| `Text`                          | **Yes** | The main caption for your post.                                                                                                                                         | `Hello world!`                                                                   |
+| `Image URLs`                    | No        | Comma-separated list of public URLs for images. Used for single posts or carousels.                                                                                     | `https://.../image1.jpg, https://.../image2.jpg`                                   |
+| `Video URLs`                    | No        | Comma-separated list of public URLs for videos.                                                                                                                         | `https://.../video1.mp4`                                                         |
+| `Local Image Path`              | No        | Comma-separated list of **full local paths** to images on your computer.                                                                                                | `C:\Users\Me\Pictures\photo1.jpg, C:\Users\Me\Pictures\photo2.jpg`               |
+| `Local Video Path`              | No        | Comma-separated list of **full local paths** to videos on your computer. Overrides `Video URLs`.                                                                        | `/home/user/videos/clip.mp4`                                                     |
+| `Hashtags`                      | No        | Comma-separated list of hashtags.                                                                                                                                       | `#tech, #automation, #python`                                                    |
+| `Hashtags with TEXT`            | No        | Set to `TRUE` to include hashtags in the main caption. If `FALSE` or blank, hashtags are posted as a first comment (Instagram only).                                     | `FALSE`                                                                          |
+| `Post on Instagram`             | **Yes** | Set to `TRUE` to post to Instagram.                                                                                                                                     | `TRUE`                                                                           |
+| `Post on Threads`               | **Yes** | Set to `TRUE` to post to Threads.                                                                                                                                       | `TRUE`                                                                           |
+| `Do Not Post Media on Threads`  | No        | Set to `TRUE` to force a text-only post on Threads, even if media is provided.                                                                                           | `TRUE`                                                                           |
+
+-----
+
+## 🧹 Maintenance
+
+The `uploads` folder in your GitHub repository will grow over time. A separate script is provided to clean it out.
+
+To run the cleanup script manually:
+
+```bash
+python clean_github_uploads.py
+```
+
+It's recommended to schedule this script to run periodically (e.g., once a week).
+
+-----
+
+## ❓ Troubleshooting
+
+  * **`404 Not Found` from GitHub:** Your repository is likely private or your Personal Access Token is missing the `repo` scope.
+  * **Video Posts Fail:** Ensure your video file is correctly formatted (MP4, H.264, etc.) and hosted on a public server (like GitHub). Re-encoding with HandBrake's "Web Optimized" setting is recommended.
+  * **"Ghost Posts" (Success in logs but not on platform):** This is usually due to Meta's automated content review system. Try posting a different, simpler image and caption to test if your original content was flagged.
+  * **`400 Bad Request` from Instagram/Threads:** Double-check that all your media URLs are public and provide a direct link to the file.
+

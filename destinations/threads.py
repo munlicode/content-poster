@@ -28,11 +28,7 @@ class ThreadsDestination(IDestination):
             caption_parts.append(text.strip())
         if include_hashtags and hashtags:
             # Simple formatting for Threads hashtags
-            formatted_hashtags = " ".join(
-                f"#{tag.strip()}"
-                for tag in re.split(r"[\s,;]+", hashtags)
-                if tag.strip()
-            )
+            formatted_hashtags = hashtags
             if formatted_hashtags:
                 caption_parts.append(formatted_hashtags)
         return "\n\n".join(caption_parts)
@@ -251,11 +247,7 @@ class ThreadsDestination(IDestination):
 
         post_id = self._publish_container(final_container_id)
         if post_id and not post_hashtags_in_caption and hashtags:
-            reply_hashtags = " ".join(
-                f"#{tag.strip()}"
-                for tag in re.split(r"[\s,;]+", hashtags)
-                if tag.strip()
-            )
+            reply_hashtags = hashtags
             if reply_hashtags:
                 self._post_reply(post_id, reply_hashtags)
 

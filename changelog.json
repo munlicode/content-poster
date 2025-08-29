@@ -23,6 +23,10 @@
       {
         "name": "Posting with additional values",
         "description": "Posting with Images, Videos, hashtags, etc."
+      },
+      {
+        "name": "Posting with paths to media via Github",
+        "description": "Posting with Images, Videos"
       }
     ],
     "date": "28-08-2025"
