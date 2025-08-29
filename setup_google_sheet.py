@@ -22,8 +22,6 @@ def setup_sheet_headers():
         settings.TIME_COLUMN_NAME,
         settings.STATUS_COLUMN_NAME,
         settings.TEXT_COLUMN_NAME,
-        settings.IMAGE_URLS_COLUMN_NAME,
-        settings.VIDEO_URLS_COLUMN_NAME,
         settings.HASHTAGS_COLUMN_NAME,
         settings.HASHTAGS_IN_CAPTION_COLUMN_NAME,
         settings.THREADS_TEXT_ONLY_COLUMN_NAME,
@@ -31,6 +29,8 @@ def setup_sheet_headers():
         settings.POST_ON_THREADS_COLUMN_NAME,
         settings.LOCAL_IMAGE_PATH_COLUMN_NAME,
         settings.LOCAL_VIDEO_PATH_COLUMN_NAME,
+        settings.IMAGE_URLS_COLUMN_NAME,
+        settings.VIDEO_URLS_COLUMN_NAME,
     ]
 
     # --- 1. Define columns for specific formatting ---
