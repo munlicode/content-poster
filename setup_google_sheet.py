@@ -101,7 +101,7 @@ def setup_sheet_headers():
                 regex_pattern = r"^\d{4}-\d{2}-\d{2}$"
 
                 # The formula checks if the cell is blank OR if its text matches the regex pattern
-                formula = f'=OR(ISBLANK({col_letter}2), REGEXMATCH(TO_TEXT({col_letter}2), "{regex_pattern}"))'
+                formula = f"=OR(ISBLANK({col_letter}2), REGEXMATCH(TO_TEXT({col_letter}2), '{regex_pattern}'))"
 
                 rule = {
                     "condition": {
