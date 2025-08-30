@@ -91,22 +91,25 @@ def setup_sheet_headers():
             if req:
                 formatting_requests.append(req)
 
-        # Date validation rule
+        # Date validation rule for a strict YYYY-MM-DD format
         for col in date_columns:
             if col in headers:
                 col_index = headers.index(col)
                 col_letter = _index_to_col_letter(col_index)
-                # This formula checks if the cell is blank OR its value is a whole number (a date).
-                formula = (
-                    f"=OR(ISBLANK({col_letter}2), {col_letter}2=INT({col_letter}2))"
-                )
+
+                # This regex ensures the format is exactly "YYYY-MM-DD"
+                regex_pattern = r"^\d{4}-\d{2}-\d{2}$"
+
+                # The formula checks if the cell is blank OR if its text matches the regex pattern
+                formula = f'=OR(ISBLANK({col_letter}2), REGEXMATCH(TO_TEXT({col_letter}2), "{regex_pattern}"))'
+
                 rule = {
                     "condition": {
                         "type": "CUSTOM_FORMULA",
                         "values": [{"userEnteredValue": formula}],
                     },
                     "strict": True,
-                    "inputMessage": "Please enter a valid date (e.g., 2025-12-31).",
+                    "inputMessage": "Enter a date in YYYY-MM-DD format only.",
                 }
                 req = create_validation_request(col, rule)
                 if req:
