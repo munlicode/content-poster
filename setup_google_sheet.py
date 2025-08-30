@@ -12,8 +12,7 @@ def _index_to_col_letter(index: int) -> str:
 
 def setup_sheet_headers():
     """
-    Writes headers and applies data validation rules (checkboxes, date, time, text length)
-    to the Google Sheet.
+    Writes headers and applies data validation rules using universal English/US-locale formulas.
     """
     log.info("--- Starting Google Sheet Setup ---")
 
@@ -91,17 +90,19 @@ def setup_sheet_headers():
             if req:
                 formatting_requests.append(req)
 
-        # Date validation rule for a strict YYYY-MM-DD format
+        # --- THIS IS THE FIX ---
+        # Date validation using a combination of basic, reliable functions
         for col in date_columns:
             if col in headers:
                 col_index = headers.index(col)
                 col_letter = _index_to_col_letter(col_index)
 
-                # This regex ensures the format is exactly "YYYY-MM-DD"
-                regex_pattern = r"^\\d{4}-\\d{2}-\\d{2}$"
-
-                # The formula checks if the cell is blank OR if its text matches the regex pattern
-                formula = f'=OR(ISBLANK({col_letter}2), REGEXMATCH(TO_TEXT({col_letter}2), "{regex_pattern}"))'
+                # This formula manually checks the format and validity of the date string
+                formula = (
+                    f"=OR(ISBLANK({col_letter}2), AND(LEN({col_letter}2)=10, "
+                    f'MID({col_letter}2,5,1)="-", MID({col_letter}2,8,1)="-", '
+                    f"ISNUMBER(DATEVALUE({col_letter}2))))"
+                )
 
                 rule = {
                     "condition": {
@@ -115,12 +116,11 @@ def setup_sheet_headers():
                 if req:
                     formatting_requests.append(req)
 
-        # FIX: Use a numeric check for time validation
+        # Time validation
         for col in time_columns:
             if col in headers:
                 col_index = headers.index(col)
                 col_letter = _index_to_col_letter(col_index)
-                # This formula checks if the cell is blank OR is a number between 0 and 1.
                 formula = f"=OR(ISBLANK({col_letter}2), AND(ISNUMBER({col_letter}2), {col_letter}2>=0, {col_letter}2<1))"
                 rule = {
                     "condition": {
@@ -134,7 +134,7 @@ def setup_sheet_headers():
                 if req:
                     formatting_requests.append(req)
 
-        # Text length limit rule
+        # Text length limit
         for col in text_limit_columns:
             if col in headers:
                 col_index = headers.index(col)
@@ -155,7 +155,7 @@ def setup_sheet_headers():
         # Send all formatting requests in a single batch update
         if formatting_requests:
             spreadsheet.batch_update({"requests": formatting_requests})
-            log.info(f"✅ Successfully applied all formatting rules.")
+            log.info("✅ Successfully applied all formatting rules.")
 
         log.info("Sheet setup is complete.")
 
