@@ -47,7 +47,7 @@ def setup_sheet_headers():
     try:
         # --- 2. Authenticate and open the worksheet ---
         log.info("Authenticating with Google Service Account...")
-        gc = gspread.service_account(filename="credentials.json")
+        gc = gspread.service_account(filename=settings.GOOGLE_CREDENTIALS_FILE)
         spreadsheet = gc.open(settings.GOOGLE_SHEET_NAME)
         worksheet = spreadsheet.worksheet(settings.WORKSHEET_NAME)
 
@@ -90,15 +90,16 @@ def setup_sheet_headers():
             )
             if req:
                 formatting_requests.append(req)
+
         # Date validation rule
         for col in date_columns:
             if col in headers:
                 col_index = headers.index(col)
                 col_letter = _index_to_col_letter(col_index)
-
-                # CORRECTED FORMULA: Checks if the cell is blank OR is a valid date.
-                formula = f"=OR(ISBLANK({col_letter}2), ISDATE({col_letter}2))"
-
+                # This formula checks if the cell is blank OR its value is a whole number (a date).
+                formula = (
+                    f"=OR(ISBLANK({col_letter}2), {col_letter}2=INT({col_letter}2))"
+                )
                 rule = {
                     "condition": {
                         "type": "CUSTOM_FORMULA",
