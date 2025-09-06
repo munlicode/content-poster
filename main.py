@@ -7,7 +7,7 @@ from destinations.threads import ThreadsDestination
 from destinations.instagram import InstagramDestination
 from config import settings
 from logger_setup import log
-from helpers import get_workspace_names
+from helpers import get_worksheet_names
 
 LOCK_FILE = "pipeline.lock"
 
@@ -18,11 +18,11 @@ def run_pipeline():
     to prevent race conditions and duplicate posts.
     """
     log.info("\n--- Starting Content Pipeline Run ---")
-    workspace_names = get_workspace_names()
-    print(workspace_names)
-    for workspace_name in workspace_names:
+    worksheet_names = get_worksheet_names()
+
+    for worksheet_name in worksheet_names:
         # Fetch all posts that are pending
-        source = GoogleSheetsSource(workspace_name)
+        source = GoogleSheetsSource(worksheet_name)
         all_data = source.get_data()
 
         # Filter for VALID posts (your new filter)
@@ -78,8 +78,8 @@ def run_pipeline():
         )
 
         # 4. Initialize destinations and process each "locked" post
-        threads_dest = ThreadsDestination(workspace_name)
-        instagram_dest = InstagramDestination(workspace_name)
+        threads_dest = ThreadsDestination(worksheet_name)
+        instagram_dest = InstagramDestination(worksheet_name)
 
         for item in posts_to_publish:
             row_number = item.get("row_number")

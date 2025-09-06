@@ -14,9 +14,9 @@ from processors.video_processor import process_and_upload_video
 class InstagramDestination(IDestination):
     """A destination that posts content to the Instagram Graph API from URLs or local files."""
 
-    def __init__(self, workspace_name: str):
+    def __init__(self, worksheet_name: str):
         all_tokens = token_manager.load_tokens()
-        token_data = all_tokens.get(workspace_name, {}).get("instagram", {})
+        token_data = all_tokens.get(worksheet_name, {}).get("instagram", {})
         self.user_id = token_data.get("user_id")
         self.access_token = token_data.get("access_token")
         self.base_url = (

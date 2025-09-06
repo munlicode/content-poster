@@ -13,9 +13,9 @@ from helpers import upload_to_github
 class ThreadsDestination(IDestination):
     """A destination that posts content to Meta's Threads API, supporting single and carousel posts from URLs or local files."""
 
-    def __init__(self, workspace_name: str):
+    def __init__(self, worksheet_name: str):
         all_tokens = token_manager.load_tokens()
-        token_data = all_tokens.get(workspace_name, {}).get("threads", {})
+        token_data = all_tokens.get(worksheet_name, {}).get("threads", {})
         self.user_id = token_data.get("user_id")
         self.access_token = token_data.get("access_token")
         self.base_url = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}"

@@ -8,13 +8,13 @@ from logger_setup import log
 class GoogleSheetsSource(IDataSource):
     """Fetches data from a specified Google Sheet and can update it."""
 
-    def __init__(self, workspace_name: str):
+    def __init__(self, worksheet_name: str):
         try:
             self.client = gspread.service_account(
                 filename=settings.GOOGLE_CREDENTIALS_FILE
             )
             self.sheet = self.client.open(settings.GOOGLE_SHEET_NAME).worksheet(
-                workspace_name
+                worksheet_name
             )
             # Get the column headers to find the status column number efficiently later
             self.headers = self.sheet.row_values(1)

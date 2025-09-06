@@ -1,6 +1,7 @@
 import gspread
 from config import settings
 from logger_setup import log
+from helpers import get_worksheet_names
 
 
 def _index_to_col_letter(index: int) -> str:
@@ -48,121 +49,124 @@ def setup_sheet_headers():
         log.info("Authenticating with Google Service Account...")
         gc = gspread.service_account(filename=settings.GOOGLE_CREDENTIALS_FILE)
         spreadsheet = gc.open(settings.GOOGLE_SHEET_NAME)
-        worksheet = spreadsheet.worksheet(settings.WORKSHEET_NAME)
 
-        # --- 3. Write the headers to the first row ---
-        log.info("Writing headers to the first row...")
-        worksheet.update(range_name="A1", values=[headers])
-        log.info("✅ Successfully populated Google Sheet with headers.")
+        worksheet_names = get_worksheet_names()
+        for worksheet_name in worksheet_names:
+            worksheet = spreadsheet.worksheet(worksheet_name)
 
-        # --- 4. Apply all data validation and formatting in one batch ---
-        log.info("Applying data validation and formatting rules...")
-        formatting_requests = []
-        worksheet_id = worksheet.id
+            # --- 3. Write the headers to the first row ---
+            log.info("Writing headers to the first row...")
+            worksheet.update(range_name="A1", values=[headers])
+            log.info("✅ Successfully populated Google Sheet with headers.")
 
-        # Helper function to create a validation request
-        def create_validation_request(col_name, rule):
-            if col_name in headers:
-                col_index = headers.index(col_name)
-                return {
-                    "setDataValidation": {
-                        "range": {
-                            "sheetId": worksheet_id,
-                            "startRowIndex": 1,
-                            "startColumnIndex": col_index,
-                            "endColumnIndex": col_index + 1,
-                        },
-                        "rule": rule,
+            # --- 4. Apply all data validation and formatting in one batch ---
+            log.info("Applying data validation and formatting rules...")
+            formatting_requests = []
+            worksheet_id = worksheet.id
+
+            # Helper function to create a validation request
+            def create_validation_request(col_name, rule):
+                if col_name in headers:
+                    col_index = headers.index(col_name)
+                    return {
+                        "setDataValidation": {
+                            "range": {
+                                "sheetId": worksheet_id,
+                                "startRowIndex": 1,
+                                "startColumnIndex": col_index,
+                                "endColumnIndex": col_index + 1,
+                            },
+                            "rule": rule,
+                        }
                     }
-                }
-            return None
+                return None
 
-        # Checkbox rule
-        for col in checkbox_columns:
-            req = create_validation_request(
-                col,
-                {
-                    "condition": {"type": "BOOLEAN"},
-                    "strict": True,
-                    "showCustomUi": True,
-                },
-            )
-            if req:
-                formatting_requests.append(req)
-
-        # --- THIS IS THE FIX ---
-        # Date validation using a combination of basic, reliable functions
-        for col in date_columns:
-            if col in headers:
-                col_index = headers.index(col)
-                col_letter = _index_to_col_letter(col_index)
-
-                # This formula manually checks the format and validity of the date string
-                formula = (
-                    f"=OR(ISBLANK({col_letter}2), AND(LEN({col_letter}2)=10, "
-                    f'MID({col_letter}2,5,1)="-", MID({col_letter}2,8,1)="-", '
-                    f"ISNUMBER(DATEVALUE({col_letter}2))))"
+            # Checkbox rule
+            for col in checkbox_columns:
+                req = create_validation_request(
+                    col,
+                    {
+                        "condition": {"type": "BOOLEAN"},
+                        "strict": True,
+                        "showCustomUi": True,
+                    },
                 )
-
-                rule = {
-                    "condition": {
-                        "type": "CUSTOM_FORMULA",
-                        "values": [{"userEnteredValue": formula}],
-                    },
-                    "strict": True,
-                    "inputMessage": "Enter a date in YYYY-MM-DD format only.",
-                }
-                req = create_validation_request(col, rule)
                 if req:
                     formatting_requests.append(req)
 
-        # Time validation
-        for col in time_columns:
-            if col in headers:
-                col_index = headers.index(col)
-                col_letter = _index_to_col_letter(col_index)
-                formula = f"=OR(ISBLANK({col_letter}2), AND(ISNUMBER({col_letter}2), {col_letter}2>=0, {col_letter}2<1))"
-                rule = {
-                    "condition": {
-                        "type": "CUSTOM_FORMULA",
-                        "values": [{"userEnteredValue": formula}],
-                    },
-                    "strict": True,
-                    "inputMessage": "Please enter a valid time (e.g., 14:30).",
-                }
-                req = create_validation_request(col, rule)
-                if req:
-                    formatting_requests.append(req)
+            # --- THIS IS THE FIX ---
+            # Date validation using a combination of basic, reliable functions
+            for col in date_columns:
+                if col in headers:
+                    col_index = headers.index(col)
+                    col_letter = _index_to_col_letter(col_index)
 
-        # Text length limit
-        for col in text_limit_columns:
-            if col in headers:
-                col_index = headers.index(col)
-                col_letter = _index_to_col_letter(col_index)
-                formula = f"=LEN({col_letter}2) <= 500"
-                rule = {
-                    "condition": {
-                        "type": "CUSTOM_FORMULA",
-                        "values": [{"userEnteredValue": formula}],
-                    },
-                    "strict": False,
-                    "inputMessage": "Text should be 500 characters or less.",
-                }
-                req = create_validation_request(col, rule)
-                if req:
-                    formatting_requests.append(req)
+                    # This formula manually checks the format and validity of the date string
+                    formula = (
+                        f"=OR(ISBLANK({col_letter}2), AND(LEN({col_letter}2)=10, "
+                        f'MID({col_letter}2,5,1)="-", MID({col_letter}2,8,1)="-", '
+                        f"ISNUMBER(DATEVALUE({col_letter}2))))"
+                    )
 
-        # Send all formatting requests in a single batch update
-        if formatting_requests:
-            spreadsheet.batch_update({"requests": formatting_requests})
-            log.info("✅ Successfully applied all formatting rules.")
+                    rule = {
+                        "condition": {
+                            "type": "CUSTOM_FORMULA",
+                            "values": [{"userEnteredValue": formula}],
+                        },
+                        "strict": True,
+                        "inputMessage": "Enter a date in YYYY-MM-DD format only.",
+                    }
+                    req = create_validation_request(col, rule)
+                    if req:
+                        formatting_requests.append(req)
+
+            # Time validation
+            for col in time_columns:
+                if col in headers:
+                    col_index = headers.index(col)
+                    col_letter = _index_to_col_letter(col_index)
+                    formula = f"=OR(ISBLANK({col_letter}2), AND(ISNUMBER({col_letter}2), {col_letter}2>=0, {col_letter}2<1))"
+                    rule = {
+                        "condition": {
+                            "type": "CUSTOM_FORMULA",
+                            "values": [{"userEnteredValue": formula}],
+                        },
+                        "strict": True,
+                        "inputMessage": "Please enter a valid time (e.g., 14:30).",
+                    }
+                    req = create_validation_request(col, rule)
+                    if req:
+                        formatting_requests.append(req)
+
+            # Text length limit
+            for col in text_limit_columns:
+                if col in headers:
+                    col_index = headers.index(col)
+                    col_letter = _index_to_col_letter(col_index)
+                    formula = f"=LEN({col_letter}2) <= 500"
+                    rule = {
+                        "condition": {
+                            "type": "CUSTOM_FORMULA",
+                            "values": [{"userEnteredValue": formula}],
+                        },
+                        "strict": False,
+                        "inputMessage": "Text should be 500 characters or less.",
+                    }
+                    req = create_validation_request(col, rule)
+                    if req:
+                        formatting_requests.append(req)
+
+            # Send all formatting requests in a single batch update
+            if formatting_requests:
+                spreadsheet.batch_update({"requests": formatting_requests})
+                log.info("✅ Successfully applied all formatting rules.")
 
         log.info("Sheet setup is complete.")
 
     except gspread.exceptions.SpreadsheetNotFound:
         log.error(f"Error: Spreadsheet '{settings.GOOGLE_SHEET_NAME}' not found.")
     except gspread.exceptions.WorksheetNotFound:
-        log.error(f"Error: Worksheet '{settings.WORKSHEET_NAME}' not found.")
+        log.error(f"Error: Worksheet '{worksheet_name}' not found.")
     except Exception as e:
         log.error(f"An unexpected error occurred: {e}")
 

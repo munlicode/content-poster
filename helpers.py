@@ -83,6 +83,6 @@ def upload_to_github(local_file_path: str) -> Optional[str]:
         return None
 
 
-def get_workspace_names():
+def get_worksheet_names():
     tokens = load_tokens()
     return tokens.keys()
