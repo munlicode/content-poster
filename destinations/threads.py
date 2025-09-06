@@ -13,9 +13,9 @@ from helpers import upload_to_github
 class ThreadsDestination(IDestination):
     """A destination that posts content to Meta's Threads API, supporting single and carousel posts from URLs or local files."""
 
-    def __init__(self):
-        all_tokens = token_manager.load_token()
-        token_data = all_tokens.get("threads", {})
+    def __init__(self, workspace_name: str):
+        all_tokens = token_manager.load_tokens()
+        token_data = all_tokens.get(workspace_name, {}).get("threads", {})
         self.user_id = token_data.get("user_id")
         self.access_token = token_data.get("access_token")
         self.base_url = f"{settings.THREADS_API_BASE_URL}{settings.THREADS_API_VERSION}"
@@ -63,12 +63,46 @@ class ThreadsDestination(IDestination):
             return False
 
         # --- Step 2: Publish the Reply Container ---
-        return self._publish_container(creation_id, is_reply=True)
+        return self._publish_container(creation_id)
+
+    def _check_container_status(self, creation_id: str) -> Optional[str]:
+        """
+        Polls the container status endpoint until it's FINISHED or fails.
+        This is crucial for waiting on video processing.
+        """
+        log.info(f"Checking status for container ID: {creation_id}")
+        for _ in range(15):  # Poll for up to 75 seconds (15 * 5s)
+            try:
+                status_url = f"{self.base_url}/{creation_id}"
+                params = {
+                    "fields": "status",
+                    "access_token": self.access_token,
+                }
+                response = requests.get(status_url, params=params, timeout=30)
+                response.raise_for_status()
+                status_data = response.json()
+                status = status_data.get("status")
+
+                if status == "FINISHED":
+                    log.info(f"Container {creation_id} is ready.")
+                    return creation_id
+                if status == "ERROR":
+                    log.error(f"Container {creation_id} failed. Details: {status_data}")
+                    return None
+
+                log.info(f"Container {creation_id} status is '{status}'. Waiting...")
+                time.sleep(5)
+            except requests.exceptions.RequestException as e:
+                log.error(f"Error checking status for {creation_id}: {e}")
+                return None
+
+        log.error(f"Container {creation_id} timed out after multiple checks.")
+        return None
 
     def _create_item_container(self, media_url: str, is_video: bool) -> Optional[str]:
-        """Creates a single container for an item that will go in a carousel."""
+        """Creates a single container for a carousel item AND waits for it to be ready."""
         log.info(
-            f"Creating carousel item container for {'video' if is_video else 'image'}: {media_url}"
+            f"Creating carousel item for {'video' if is_video else 'image'}: {media_url}"
         )
         endpoint = f"{self.base_url}/{self.user_id}/threads"
         params = {"access_token": self.access_token, "is_carousel_item": "true"}
@@ -82,23 +116,22 @@ class ThreadsDestination(IDestination):
             response.raise_for_status()
             item_id = response.json().get("id")
             if not item_id:
+                log.error("API did not return an ID for the carousel item.")
                 return None
-            log.info(f"Successfully created item container. ID: {item_id}")
-            return item_id
+
+            # Wait for the item to finish processing before returning its ID
+            return self._check_container_status(item_id)
         except requests.exceptions.RequestException as e:
             log.error(
-                f"Error creating carousel item container: {e.response.text if e.response else e}"
+                f"Error creating item container: {e.response.text if e.response else e}"
             )
             return None
 
-    def _publish_container(
-        self, creation_id: str, is_reply: bool = False
-    ) -> Optional[str]:
-        """Publishes a finished container (single, carousel, or text) and returns the post ID."""
-        log_prefix = "Reply Step 2:" if is_reply else "Publish Step:"
-        log.info(f"{log_prefix} Publishing final container ID: {creation_id}")
+    def _publish_container(self, creation_id: str) -> Optional[str]:
+        """Publishes a finished container and returns the post ID."""
+        log.info(f"Publishing final container ID: {creation_id}")
 
-        time.sleep(3)  # Recommended wait before publishing
+        time.sleep(1)  # A small delay can prevent rapid-fire API issues.
         endpoint = f"{self.base_url}/{self.user_id}/threads_publish"
         params = {"creation_id": creation_id, "access_token": self.access_token}
         try:
@@ -107,7 +140,7 @@ class ThreadsDestination(IDestination):
             post_id = response.json().get("id")
             if not post_id:
                 log.error(
-                    f"Failed to get a post_id from publish response: {response.json()}"
+                    f"Failed to get post_id from publish response: {response.json()}"
                 )
                 return None
             log.info(f"🚀 Successfully published! Post ID: {post_id}")
@@ -209,7 +242,10 @@ class ThreadsDestination(IDestination):
                     params.update({"media_type": "IMAGE", "image_url": media_url})
                 response = requests.post(endpoint, params=params, timeout=90)
                 response.raise_for_status()
-                final_container_id = response.json().get("id")
+                # final_container_id = response.json().get("id")
+                creation_id = response.json().get("id")
+                if creation_id:
+                    final_container_id = self._check_container_status(creation_id)
 
             elif media_count > 1:  # Carousel Post
                 log.info(f"Creating carousel with {media_count} items...")
@@ -244,6 +280,11 @@ class ThreadsDestination(IDestination):
         if not final_container_id:
             log.error("Failed to create a final container for publishing.")
             return False
+        if final_container_id and media_count > 1:
+            log.info(
+                "Parent carousel container created. Waiting 20 seconds for server-side processing..."
+            )
+            time.sleep(20)  # Add a long wait here
 
         post_id = self._publish_container(final_container_id)
         if post_id and not post_hashtags_in_caption and hashtags:

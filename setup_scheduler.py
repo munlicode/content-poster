@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 
+from config import settings
+
 # --- Configuration ---
 # Names for the main posting job
 JOB_COMMENT = "Content Poster Job"
@@ -42,7 +44,7 @@ def get_paths():
 
 
 # --- Windows Functions ---
-def setup_windows_task():
+def setup_windows_task(frequency: int):
     """Creates or updates all tasks in Windows Task Scheduler."""
     (
         project_path,
@@ -64,7 +66,7 @@ def setup_windows_task():
         "/SC",
         "MINUTE",
         "/MO",
-        "1",
+        str(frequency),
         "/TN",
         TASK_NAME,
         "/TR",
@@ -154,7 +156,7 @@ def remove_windows_task():
 
 
 # --- Linux & macOS Functions ---
-def setup_unix_job():
+def setup_unix_job(frequency: int):
     """Adds or updates all cron jobs for Linux/macOS."""
     from crontab import CronTab
 
@@ -176,7 +178,7 @@ def setup_unix_job():
     # Create main job (every minute)
     main_command = f"cd {project_path} && {python_path} {main_script_path}"
     main_job = cron.new(command=main_command, comment=JOB_COMMENT)
-    main_job.minute.every(1)
+    main_job.minute.every(frequency)
 
     # Create refresh job (daily at 3 AM)
     refresh_command = f"cd {project_path} && {python_path} {refresh_script_path}"
@@ -216,6 +218,18 @@ if __name__ == "__main__":
         sys.exit(1)
 
     action = sys.argv[1]
+    run_frequency = 1
+    if action == "add":
+        run_frequency = getattr(settings, "MAIN_SCRIPT_RUN_FREQUENCY_MINUTES", 1)
+        if not isinstance(run_frequency, int) or run_frequency <= 0:
+            print(
+                f"ERROR: 'MAIN_SCRIPT_RUN_FREQUENCY_MINUTES' in config.py must be a positive integer."
+            )
+            print(f"       Found value: '{run_frequency}'")
+            sys.exit(1)
+        print(
+            f"INFO: Main script will be scheduled to run every {run_frequency} minute(s)."
+        )
 
     if sys.platform.startswith("win"):
         if action == "add":

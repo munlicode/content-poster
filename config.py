@@ -7,8 +7,6 @@ class Settings(BaseSettings):
     GITHUB_REPO_NAME: Optional[str] = None
     GITHUB_TOKEN: Optional[str] = None
 
-    CACHE_FILE_PATH: str = "post_cache.json"
-
     THREADS_API_VERSION: str = "v1.0"
     THREADS_API_BASE_URL: str = "https://graph.threads.net/"
     FACEBOOK_API_VERSION: str = "v23.0"
@@ -24,9 +22,6 @@ class Settings(BaseSettings):
 
     # The exact name of your Google Sheet document
     GOOGLE_SHEET_NAME: str = "aaa101"
-
-    # The name of the specific tab (worksheet) inside the sheet
-    WORKSHEET_NAME: str = "Sheet1"
 
     # --- Column Header Names ---
     # The names of the columns in your worksheet that contain the data.
@@ -46,10 +41,6 @@ class Settings(BaseSettings):
     LOCAL_VIDEO_PATH_COLUMN_NAME: str = "Local Video Path"
 
     # --- Advanced Settings ---
-    # A list of times (in 24-hour HH:MM format) to fetch fresh data from Google Sheets.
-    # To fetch only once a day at 7 AM: FETCH_SCHEDULE = ["07:00"]
-    # To fetch three times a day: FETCH_SCHEDULE = ["07:00", "12:00", "17:00"]
-    FETCH_SCHEDULE: list[str] = ["08:00", "13:00", "16:51", "18:00", "21:39"]
     STATUS_OPTIONS: dict[str, str] = (
         {  # if Applyable means that it is used already, otherwise it means that it might be implemented
             "published": "Published",  # Applyable
@@ -61,6 +52,9 @@ class Settings(BaseSettings):
             "cancelled": "Cancelled",  # Not Applyable --- Setted by user in case if he wants to cancel publishing
         }
     )
+
+    TOKEN_FILE: str = "token_storage.json"
+    MAIN_SCRIPT_RUN_FREQUENCY_MINUTES: int = 1
 
     class Config:
         env_file = ".env"

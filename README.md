@@ -13,7 +13,6 @@ This project automates publishing content to **Instagram** and **Threads** direc
   * **Status Tracking:** Automatically updates your Google Sheet with a `Published` or `Failed` status for each post.
   * **Cross-Platform Scheduler:** A helper script automatically sets up the required scheduled tasks on Windows, macOS, and Linux.
   * **Local File Hosting:** Automatically uploads local media to a designated GitHub repository to generate the public URLs required by the Meta APIs.
-  * **Repo Maintenance:** Includes a utility script to periodically clean up the temporary media files hosted on GitHub.
 
 -----
 
@@ -35,8 +34,8 @@ Follow these steps carefully to configure and launch the scheduler.
 1.  **Clone the repository:**
 
     ```bash
-    git clone <your-repository-url>
-    cd <repository-name>
+    git clone htts://github.com/munlicode/content-poster
+    cd content-poster
     ```
 
 2.  **Create and activate a virtual environment:**
@@ -69,15 +68,20 @@ Follow these steps carefully to configure and launch the scheduler.
 
 ### 4\. Meta APIs (Instagram & Threads)
 
-1.  Go to [Meta for Developers](https://developers.facebook.com/) and create a new App of type "Business".
-2.  From your App Dashboard, add the **Instagram Graph API** and **Threads API** products.
-3.  For the **Instagram API**, grant the following permissions in the App's settings:
+1.  Go to [Meta for Developers](https://developers.facebook.com/) and create a new App of type "Business" with Use Cases Instragram and Threads
+2.  Go to Use Cases in app dashboard
+3.  For the **Instagram API**, grant at least the following permissions in the App's settings:
       * `instagram_basic`
       * `instagram_content_publish`
       * `pages_read_engagement`
       * `business_management`
       * `pages_show_list`
 4.  For the **Threads API**, grant `threads_basic` and `threads_content_publish` permissions.
+5. Go to `App Roles` -> `Roles` and add `threads testing account` that you want to use. After that go to threads mobile app `Settings` -> `Account` -> `Website-Authorization` -> `Invites` and accept request from your app
+6. Go to [Meta Graph API Explorer](https://developers.facebook.com/tools/explorer/)
+7. First on facebook domain give permissions for instagram account that access token needs and then click `Generate Access Token` and authorize your account. After you get this access token, go to [Access Token Debugger](https://developers.facebook.com/tools/debug/accesstoken/) and apply debug for your new access token. From shown data under `Granular Scopes` get numerical id near `instagram_basic` and save it somewhere. It is your instagram account id.
+8. Now do the same process for threads account. In order to do so, instead of facebook choose threads.net in domain and go through the same process
+  
 
 ### 5\. GitHub API for Media Hosting
 
@@ -99,42 +103,8 @@ Follow these steps carefully to configure and launch the scheduler.
 
 2.  Open the new `.env` file and fill in all the values. The script uses the `*_COLUMN_NAME` variables to find the correct columns in your sheet, regardless of their order.
 
-    ```dotenv
-    # --- Meta App Credentials ---
-    APP_ID="YOUR_META_APP_ID"
-    APP_SECRET="YOUR_META_APP_SECRET"
-
-    # --- Google Sheets Settings ---
-    GOOGLE_SHEET_NAME="Your Content Schedule Sheet Name"
-
-    # --- GitHub Media Repo Settings ---
-    GITHUB_USERNAME="your-github-username"
-    GITHUB_REPO_NAME="your-media-repo-name"
-    GITHUB_TOKEN="your_github_personal_access_token"
-
-    # --- Column Names in Your Google Sheet ---
-    DATE_COLUMN_NAME="Date"
-    TIME_COLUMN_NAME="Time"
-    STATUS_COLUMN_NAME="Status"
-    TEXT_COLUMN_NAME="Text"
-    IMAGE_URLS_COLUMN_NAME="Image URLs"
-    VIDEO_URLS_COLUMN_NAME="Video URLs"
-    LOCAL_IMAGE_PATH_COLUMN_NAME="Local Image Path"
-    LOCAL_VIDEO_PATH_COLUMN_NAME="Local Video Path"
-    HASHTAGS_COLUMN_NAME="Hashtags"
-    HASHTAGS_IN_CAPTION_COLUMN_NAME="Hashtags with TEXT"
-    POST_ON_INSTAGRAM_COLUMN_NAME="Post on Instagram"
-    POST_ON_THREADS_COLUMN_NAME="Post on Threads"
-    THREADS_TEXT_ONLY_COLUMN_NAME="Do Not Post Media on Threads"
-    ```
-
 ### 7\. Generate API Tokens
-
-1.  Use the [Graph API Explorer](https://developers.facebook.com/tools/explorer/) to get a short-lived User Access Token for your app. Make sure to grant all the permissions you configured in Step 4.
-
-2.  Use the [Access Token Debugger](https://developers.facebook.com/tools/debug/accesstoken/) to find the **User ID** associated with that token.
-
-3.  Run the token generation script. It will prompt you for the short-lived token and User ID for both Instagram and Threads.
+1.   Run the token generation script. It will prompt you for action type, workspace name, the short-lived token and User ID for both Instagram and Threads.
 
     ```bash
     python generate_initial_token.py
@@ -150,21 +120,21 @@ Follow these steps carefully to configure and launch the scheduler.
 
 To schedule a post, add a new row and fill in the columns.
 
-| Column Name                  | Required? | Description                                                                                      | Example                                                  |
-| ---------------------------- | :-------: | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| `Date`                       |  **Yes** | Post date in `YYYY-MM-DD` format.                                                                | `2025-12-25`                                             |
-| `Time`                       |  **Yes** | Post time in 24-hour `HH:MM` format.                                                             | `18:30`                                                  |
-| `Status`                     |    No     | Leave blank. The script updates this to `Published` or `Failed`.                                 | `Published`                                              |
-| `Text`                       |  **Yes** | The main caption for your post.                                                                  | `Check out this amazing view!`                           |
-| `Image URLs`                 |    No     | Comma-separated public URLs for images.                                                          | `https://.../image1.jpg, https://.../image2.jpg`         |
-| `Video URLs`                 |    No     | Comma-separated public URLs for videos.                                                          | `https://.../video1.mp4`                                 |
-| `Local Image Path`           |    No     | Comma-separated full local paths to images.                                                      | `C:\Users\Me\Pictures\photo1.jpg`                        |
-| `Local Video Path`           |    No     | Comma-separated full local paths to videos. Overrides `Video URLs`.                              | `/home/user/videos/clip.mp4`                             |
-| `Hashtags`                   |    No     | Comma-separated hashtags.                                                                        | `#travel, #scenery, #automation`                         |
-| `Hashtags with TEXT`         |    No     | `TRUE` to add hashtags to the caption. Blank or `FALSE` for a first comment on Instagram.        | `FALSE`                                                  |
-| `Post on Instagram`          |  **Yes** | `TRUE` to post to Instagram.                                                                     | `TRUE`                                                   |
-| `Post on Threads`            |  **Yes** | `TRUE` to post to Threads.                                                                       | `TRUE`                                                   |
-| `Do Not Post Media on Threads` |    No     | `TRUE` to force a text-only post on Threads. *Note: Threads only supports one media item per post.* | `FALSE`                                                  |
+| Column Name                    | Required? | Description                                                                                         | Example                                          |
+| ------------------------------ | :-------: | --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `Date`                         |  **Yes**  | Post date in `YYYY-MM-DD` format.                                                                   | `2025-12-25`                                     |
+| `Time`                         |  **Yes**  | Post time in 24-hour `HH:MM` format.                                                                | `18:30`                                          |
+| `Status`                       |    No     | Leave blank. The script updates this to `Published` or `Failed`.                                    | `Published`                                      |
+| `Text`                         |  **Yes**  | The main caption for your post.                                                                     | `Check out this amazing view!`                   |
+| `Image URLs`                   |    No     | Comma-separated public URLs for images.                                                             | `https://.../image1.jpg, https://.../image2.jpg` |
+| `Video URLs`                   |    No     | Comma-separated public URLs for videos.                                                             | `https://.../video1.mp4`                         |
+| `Local Image Path`             |    No     | Comma-separated full local paths to images.                                                         | `C:\Users\Me\Pictures\photo1.jpg`                |
+| `Local Video Path`             |    No     | Comma-separated full local paths to videos. Overrides `Video URLs`.                                 | `/home/user/videos/clip.mp4`                     |
+| `Hashtags`                     |    No     | Comma-separated hashtags.                                                                           | `#travel, #scenery, #automation`                 |
+| `Hashtags with TEXT`           |    No     | `TRUE` to add hashtags to the caption. Blank or `FALSE` for a first comment on Instagram.           | `FALSE`                                          |
+| `Post on Instagram`            |  **Yes**  | `TRUE` to post to Instagram.                                                                        | `TRUE`                                           |
+| `Post on Threads`              |  **Yes**  | `TRUE` to post to Threads.                                                                          | `TRUE`                                           |
+| `Do Not Post Media on Threads` |    No     | `TRUE` to force a text-only post on Threads. *Note: Threads only supports one media item per post.* | `FALSE`                                          |
 
 ### Running the Script
 
@@ -184,6 +154,11 @@ To schedule a post, add a new row and fill in the columns.
     python setup_scheduler.py remove
     ```
 
+-----
+### Additional
+  * **Fill Google Sheets:** You might want script to fill your google sheets automatically, so you can run `python setup_google_sheet.py` to do so. 
+    * Please note that script might fail if locale is not compatable with English. In this case you need to change locale of google sheet to english or so.
+  * **Update Script Execution Frequency:** If you want script to run not by default frequency, you can set `MAIN_SCRIPT_RUN_FREQUENCY_MINUTES` in .env file to some positive integer like `5`. It will make script to run every 5 minutes instead.
 -----
 
 ## 🧹 Maintenance
