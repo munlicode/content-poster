@@ -20,7 +20,6 @@ def run_pipeline():
     log.info("\n--- Starting Content Pipeline Run ---")
     sheet_names = get_sheet_names()
     for sheet_name in sheet_names:
-        print(sheet_name)
         worksheet_names = get_worksheet_names(sheet_name)
         for worksheet_name in worksheet_names:
             # Fetch all posts that are pending
