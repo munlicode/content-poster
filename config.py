@@ -20,9 +20,6 @@ class Settings(BaseSettings):
     # Place the file in the same directory as your project.
     GOOGLE_CREDENTIALS_FILE: str = "credentials.json"
 
-    # The exact name of your Google Sheet document
-    GOOGLE_SHEET_NAME: str = "aaa101"
-
     # --- Column Header Names ---
     # The names of the columns in your worksheet that contain the data.
     # IMPORTANT: Your Google Sheet must have columns with these exact names.

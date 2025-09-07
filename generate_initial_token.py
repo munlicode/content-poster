@@ -88,51 +88,54 @@ def main():
     # --- Step 2: Loop for Profile Input ---
     while True:
         action_word = "update" if mode == "2" else "add"
-        profile_name = input(
-            f"\nEnter the profile name to {action_word} (e.g., 'Page1', 'personal_acct') [Press Enter to finish]: "
-        ).strip()
-
-        if not profile_name:
+        sheet_name = input(f"\nEnter the sheet name [Press Enter to finish]: ").strip()
+        if not sheet_name:
             break
 
-        if mode == "2" and profile_name not in all_tokens:
+        worksheet_name = input(
+            f"\nEnter the worksheet name to {action_word} (e.g., 'Sheet1') [Press Enter to finish]: "
+        ).strip()
+
+        if not worksheet_name:
+            break
+
+        if mode == "2" and worksheet_name not in all_tokens:
             log.error(
-                f"Profile '{profile_name}' does not exist. Please enter an existing profile name."
+                f"Profile '{worksheet_name}' does not exist. Please enter an existing profile name."
             )
             continue
 
-        if mode == "1" and profile_name in all_tokens:
+        if mode == "1" and worksheet_name in all_tokens:
             overwrite = (
-                input(f"Profile '{profile_name}' already exists. Overwrite? (y/n): ")
+                input(f"Profile '{worksheet_name}' already exists. Overwrite? (y/n): ")
                 .strip()
                 .lower()
             )
             if overwrite != "y":
                 continue
 
-        log.info(f"\n--- Configuring profile: '{profile_name}' ---")
+        log.info(f"\n--- Configuring profile: '{worksheet_name}' ---")
 
         # --- Step 3: Get Tokens for the Profile ---
         instagram_data = get_long_lived_token_data("instagram")
         if not instagram_data:
             log.error(
-                f"Could not get Instagram token for '{profile_name}'. Skipping this profile."
+                f"Could not get Instagram token for '{worksheet_name}'. Skipping Instagram Configuration."
             )
-            continue
+            instagram_data = {}
 
-        threads_data = {}
-        get_long_lived_token_data("threads")
+        threads_data = get_long_lived_token_data("threads")
         if not threads_data:
             log.error(
-                f"Could not get Threads token for '{profile_name}'. Skipping this profile."
+                f"Could not get Threads token for '{worksheet_name}'. Skipping Threads Configuration."
             )
-            continue
+            threads_data = {}
 
-        all_tokens[profile_name] = {
+        all_tokens.setdefault(sheet_name, {})[worksheet_name] = {
             "instagram": instagram_data,
             "threads": threads_data,
         }
-        log.info(f"✅ Successfully configured profile '{profile_name}'.")
+        log.info(f"✅ Successfully configured profile '{worksheet_name}'.")
 
     # --- Step 4: Save All Changes ---
     if all_tokens:

@@ -8,14 +8,15 @@ from logger_setup import log
 class GoogleSheetsSource(IDataSource):
     """Fetches data from a specified Google Sheet and can update it."""
 
-    def __init__(self, worksheet_name: str):
+    def __init__(self, sheet_name: str, worksheet_name: str):
         try:
             self.client = gspread.service_account(
                 filename=settings.GOOGLE_CREDENTIALS_FILE
             )
-            self.sheet = self.client.open(settings.GOOGLE_SHEET_NAME).worksheet(
-                worksheet_name
-            )
+            self.sheet_name = sheet_name
+
+            self.sheet = self.client.open(sheet_name).worksheet(worksheet_name)
+
             # Get the column headers to find the status column number efficiently later
             self.headers = self.sheet.row_values(1)
         except Exception as e:
@@ -29,9 +30,7 @@ class GoogleSheetsSource(IDataSource):
         if not self.sheet:
             return []
 
-        log.info(
-            f"Successfully connected to '{settings.GOOGLE_SHEET_NAME}'. Fetching data..."
-        )
+        log.info(f"Successfully connected to '{self.sheet_name}'. Fetching data...")
         records = self.sheet.get_all_records()
 
         # Add the original row number to each record

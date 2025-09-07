@@ -64,7 +64,7 @@ Follow these steps carefully to configure and launch the scheduler.
 3.  In your project, enable the **Google Drive API** and **Google Sheets API**.
 4.  Go to **Credentials**, click **Create Credentials**, and choose **Service Account**.
 5.  On the Keys tab for your new service account, create a **JSON** key. A `credentials.json` file will be downloaded. Move this file to the root of your project folder.
-6.  Open `credentials.json`, copy the `client_email` address, and **Share** your Google Sheet with that email, granting it **Editor** permissions.
+6.  Open `credentials.json`, copy the `client_email` address, and **Share** your Google Sheet(s) with that email, granting it **Editor** permissions.
 
 ### 4\. Meta APIs (Instagram & Threads)
 
@@ -104,13 +104,13 @@ Follow these steps carefully to configure and launch the scheduler.
 2.  Open the new `.env` file and fill in all the values. The script uses the `*_COLUMN_NAME` variables to find the correct columns in your sheet, regardless of their order.
 
 ### 7\. Generate API Tokens
-1.   Run the token generation script. It will prompt you for action type, workspace name, the short-lived token and User ID for both Instagram and Threads.
+1.   Run the token generation script. It will prompt you for action type, sheet name, workspace name, the short-lived token and User ID for both Instagram and Threads.
 
-    ```bash
-    python generate_initial_token.py
-    ```
+```bash
+  python generate_initial_token.py
+```
 
-    This will create a `token_storage.json` file with permanent, auto-refreshing tokens.
+This will create a `token_storage.json` file with permanent, auto-refreshing tokens.
 
 -----
 

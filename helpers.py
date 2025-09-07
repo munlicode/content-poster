@@ -83,6 +83,20 @@ def upload_to_github(local_file_path: str) -> Optional[str]:
         return None
 
 
-def get_worksheet_names():
+def get_worksheet_names(sheet_name: str = None) -> list:
+    worksheet_names = []
+
     tokens = load_tokens()
-    return tokens.keys()
+    if not sheet_name:
+        worksheets = tokens.values()
+        for worksheet in worksheets:
+            worksheet_names.extend(worksheet.keys())
+    else:
+        worksheets = tokens[sheet_name]
+        worksheet_names = list(worksheets.keys())
+    return worksheet_names
+
+
+def get_sheet_names() -> list:
+    tokens = load_tokens()
+    return list(tokens.keys())
