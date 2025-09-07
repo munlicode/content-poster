@@ -20,6 +20,7 @@ def run_pipeline():
     log.info("\n--- Starting Content Pipeline Run ---")
     sheet_names = get_sheet_names()
     for sheet_name in sheet_names:
+        print(sheet_name)
         worksheet_names = get_worksheet_names(sheet_name)
         for worksheet_name in worksheet_names:
             # Fetch all posts that are pending
@@ -51,7 +52,7 @@ def run_pipeline():
 
             if not valid_posts:
                 log.info("No valid posts found. Nothing to do.")
-                return
+                continue
 
             # From VALID posts, filter for those with a PENDING status
             pending_status = settings.STATUS_OPTIONS.get("pending", "Pending")
@@ -64,7 +65,7 @@ def run_pipeline():
 
             if not pending_posts:
                 log.info("No pending posts found. Nothing to do.")
-                return
+                continue
 
             # From PENDING posts, filter for those whose time is DUE
             time_validator = TimeValidator()
@@ -72,7 +73,7 @@ def run_pipeline():
 
             if not posts_to_publish:
                 log.info("No posts are due to be published at this time.")
-                return
+                continue
 
             # Now, lock and process the final, correctly filtered list
             log.info(
