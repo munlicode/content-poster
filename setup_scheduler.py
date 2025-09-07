@@ -233,7 +233,7 @@ if __name__ == "__main__":
 
     if sys.platform.startswith("win"):
         if action == "add":
-            setup_windows_task()
+            setup_windows_task(frequency=run_frequency)
         elif action == "remove":
             remove_windows_task()
     else:
@@ -246,6 +246,6 @@ if __name__ == "__main__":
             sys.exit(1)
 
         if action == "add":
-            setup_unix_job()
+            setup_unix_job(frequency=run_frequency)
         elif action == "remove":
             remove_unix_job()
