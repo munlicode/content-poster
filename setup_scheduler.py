@@ -51,12 +51,13 @@ def get_paths():
 # --- Windows Functions (MODIFIED) ---
 import tempfile
 import textwrap
+import datetime
 
 
 def setup_windows_task(frequency: int):
     """
     Creates or updates all tasks in Windows Task Scheduler using a robust XML
-    definition to ensure compatibility and correct settings.
+    definition with a dynamic StartBoundary to ensure compatibility.
     """
     (
         project_path,
@@ -66,9 +67,11 @@ def setup_windows_task(frequency: int):
         cleanup_script_path,
     ) = get_paths()
 
-    # This XML template defines a task that runs with the highest privileges,
-    # is not limited by power source (AC/battery), and won't stop if the
-    # computer goes on battery. It also runs even if the machine is not idle.
+    # --- NEW: Generate a dynamic, timezone-aware timestamp ---
+    # This is the key fix. It creates a timestamp like '2025-09-08T21:02:49.123456+05:00'
+    start_boundary_dt = datetime.datetime.now(datetime.timezone.utc).astimezone()
+    start_boundary_str = start_boundary_dt.isoformat()
+
     XML_TEMPLATE = textwrap.dedent(
         """\
     <?xml version="1.0" encoding="UTF-16"?>
@@ -91,7 +94,7 @@ def setup_windows_task(frequency: int):
         <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
         <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
         <AllowHardTerminate>true</AllowHardTerminate>
-        <StartWhenAvailable>false</StartWhenAvailable>
+        <StartWhenAvailable>true</StartWhenAvailable>
         <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
         <IdleSettings>
           <StopOnIdleEnd>true</StopOnIdleEnd>
@@ -116,20 +119,20 @@ def setup_windows_task(frequency: int):
     """
     )
 
-    # --- Trigger Definitions for each task ---
+    # --- MODIFIED: Trigger Definitions with placeholder and new TimeTrigger ---
     main_trigger = f"""
-        <CalendarTrigger>
+        <TimeTrigger>
           <Repetition>
             <Interval>PT{frequency}M</Interval>
             <StopAtDurationEnd>false</StopAtDurationEnd>
           </Repetition>
-          <StartBoundary>2020-01-01T00:00:00</StartBoundary>
+          <StartBoundary>{{start_boundary}}</StartBoundary>
           <Enabled>true</Enabled>
-        </CalendarTrigger>
+        </TimeTrigger>
     """
     refresh_trigger = """
         <CalendarTrigger>
-          <StartBoundary>2020-01-01T03:00:00</StartBoundary>
+          <StartBoundary>{start_boundary}</StartBoundary>
           <ScheduleByDay>
             <DaysInterval>1</DaysInterval>
           </ScheduleByDay>
@@ -137,7 +140,7 @@ def setup_windows_task(frequency: int):
     """
     cleanup_trigger = """
         <CalendarTrigger>
-          <StartBoundary>2020-01-01T04:00:00</StartBoundary>
+          <StartBoundary>{start_boundary}</StartBoundary>
           <ScheduleByWeek>
             <DaysOfWeek>
               <Sunday />
@@ -169,21 +172,22 @@ def setup_windows_task(frequency: int):
     ]
 
     try:
-        # Get the current user to embed in the XML for correct permissions
         current_user = subprocess.check_output("whoami", text=True).strip()
         print(f"INFO: Setting up tasks to run as user '{current_user}'.")
 
         for task in tasks_to_create:
+            # Inject the dynamic start boundary into the trigger
+            final_trigger = task["trigger"].format(start_boundary=start_boundary_str)
+
             xml_content = XML_TEMPLATE.format(
                 description=task["description"],
-                trigger=task["trigger"],
+                trigger=final_trigger,
                 user_id=current_user,
                 command=pythonw_path,
                 arguments=f'"{task["script_path"]}"',
                 workdir=project_path,
             )
 
-            # Use a temporary file to store the XML definition
             with tempfile.NamedTemporaryFile(
                 mode="w", suffix=".xml", delete=False, encoding="utf-16"
             ) as tmp:
@@ -191,7 +195,6 @@ def setup_windows_task(frequency: int):
                 temp_xml_path = tmp.name
 
             try:
-                # Create the task from the XML file
                 command = [
                     "schtasks",
                     "/create",
@@ -210,7 +213,6 @@ def setup_windows_task(frequency: int):
                 )
                 print(f"- Task '{task['name']}' created/updated successfully from XML.")
             finally:
-                # Clean up the temporary file
                 os.remove(temp_xml_path)
 
         print("\nSuccess! All scheduler tasks have been set up with proper conditions.")
