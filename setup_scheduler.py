@@ -49,10 +49,14 @@ def get_paths():
 
 
 # --- Windows Functions (MODIFIED) ---
+import tempfile
+import textwrap
+
+
 def setup_windows_task(frequency: int):
     """
-    Creates or updates all tasks in Windows Task Scheduler, ensuring they can
-    run on battery power and are not restricted by idle time.
+    Creates or updates all tasks in Windows Task Scheduler using a robust XML
+    definition to ensure compatibility and correct settings.
     """
     (
         project_path,
@@ -62,114 +66,161 @@ def setup_windows_task(frequency: int):
         cleanup_script_path,
     ) = get_paths()
 
-    print(
-        f"Setting up Windows Tasks: {TASK_NAME}, {REFRESH_TASK_NAME}, & {CLEANUP_TASK_NAME}"
+    # This XML template defines a task that runs with the highest privileges,
+    # is not limited by power source (AC/battery), and won't stop if the
+    # computer goes on battery. It also runs even if the machine is not idle.
+    XML_TEMPLATE = textwrap.dedent(
+        """\
+    <?xml version="1.0" encoding="UTF-16"?>
+    <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+      <RegistrationInfo>
+        <Description>{description}</Description>
+      </RegistrationInfo>
+      <Triggers>
+        {trigger}
+      </Triggers>
+      <Principals>
+        <Principal id="Author">
+          <UserId>{user_id}</UserId>
+          <LogonType>InteractiveToken</LogonType>
+          <RunLevel>HighestAvailable</RunLevel>
+        </Principal>
+      </Principals>
+      <Settings>
+        <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+        <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+        <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+        <AllowHardTerminate>true</AllowHardTerminate>
+        <StartWhenAvailable>false</StartWhenAvailable>
+        <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+        <IdleSettings>
+          <StopOnIdleEnd>true</StopOnIdleEnd>
+          <RestartOnIdle>false</RestartOnIdle>
+        </IdleSettings>
+        <AllowStartOnDemand>true</AllowStartOnDemand>
+        <Enabled>true</Enabled>
+        <Hidden>false</Hidden>
+        <RunOnlyIfIdle>false</RunOnlyIfIdle>
+        <WakeToRun>false</WakeToRun>
+        <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+        <Priority>7</Priority>
+      </Settings>
+      <Actions Context="Author">
+        <Exec>
+          <Command>"{command}"</Command>
+          <Arguments>{arguments}</Arguments>
+          <WorkingDirectory>{workdir}</WorkingDirectory>
+        </Exec>
+      </Actions>
+    </Task>
+    """
     )
 
-    # --- Command Strings ---
-    main_command = f'"{pythonw_path}" "{main_script_path}"'
-    refresh_command = f'"{pythonw_path}" "{refresh_script_path}"'
-    cleanup_command = f'"{pythonw_path}" "{cleanup_script_path}"'
+    # --- Trigger Definitions for each task ---
+    main_trigger = f"""
+        <CalendarTrigger>
+          <Repetition>
+            <Interval>PT{frequency}M</Interval>
+            <StopAtDurationEnd>false</StopAtDurationEnd>
+          </Repetition>
+          <StartBoundary>2020-01-01T00:00:00</StartBoundary>
+          <Enabled>true</Enabled>
+        </CalendarTrigger>
+    """
+    refresh_trigger = """
+        <CalendarTrigger>
+          <StartBoundary>2020-01-01T03:00:00</StartBoundary>
+          <ScheduleByDay>
+            <DaysInterval>1</DaysInterval>
+          </ScheduleByDay>
+        </CalendarTrigger>
+    """
+    cleanup_trigger = """
+        <CalendarTrigger>
+          <StartBoundary>2020-01-01T04:00:00</StartBoundary>
+          <ScheduleByWeek>
+            <DaysOfWeek>
+              <Sunday />
+            </DaysOfWeek>
+            <WeeksInterval>1</WeeksInterval>
+          </ScheduleByWeek>
+        </CalendarTrigger>
+    """
 
-    # --- Task Creation Commands ---
-    schtasks_main_command = [
-        "schtasks",
-        "/create",
-        "/SC",
-        "MINUTE",
-        "/MO",
-        str(frequency),
-        "/TN",
-        TASK_NAME,
-        "/TR",
-        f'cmd /c "cd /d {project_path} && start /B "" {main_command}"',
-        "/F",
-    ]
-    schtasks_refresh_command = [
-        "schtasks",
-        "/create",
-        "/SC",
-        "DAILY",
-        "/ST",
-        "03:00",
-        "/TN",
-        REFRESH_TASK_NAME,
-        "/TR",
-        f'cmd /c "cd /d {project_path} && start /B "" {refresh_command}"',
-        "/F",
-    ]
-    schtasks_cleanup_command = [
-        "schtasks",
-        "/create",
-        "/SC",
-        "WEEKLY",
-        "/D",
-        "SUN",
-        "/ST",
-        "04:00",
-        "/TN",
-        CLEANUP_TASK_NAME,
-        "/TR",
-        f'cmd /c "cd /d {project_path} && start /B "" {cleanup_command}"',
-        "/F",
-    ]
-
-    # --- NEW: Task Condition Modification Commands ---
-    schtasks_main_change_cmd = ["schtasks", "/change", "/TN", TASK_NAME, "/NAC", "/I"]
-    schtasks_refresh_change_cmd = [
-        "schtasks",
-        "/change",
-        "/TN",
-        REFRESH_TASK_NAME,
-        "/NAC",
-        "/I",
-    ]
-    schtasks_cleanup_change_cmd = [
-        "schtasks",
-        "/change",
-        "/TN",
-        CLEANUP_TASK_NAME,
-        "/NAC",
-        "/I",
-    ]
-
-    commands_to_run = [
-        (schtasks_main_command, schtasks_main_change_cmd, TASK_NAME),
-        (schtasks_refresh_command, schtasks_refresh_change_cmd, REFRESH_TASK_NAME),
-        (schtasks_cleanup_command, schtasks_cleanup_change_cmd, CLEANUP_TASK_NAME),
+    tasks_to_create = [
+        {
+            "name": TASK_NAME,
+            "description": JOB_COMMENT,
+            "script_path": main_script_path,
+            "trigger": main_trigger,
+        },
+        {
+            "name": REFRESH_TASK_NAME,
+            "description": REFRESH_JOB_COMMENT,
+            "script_path": refresh_script_path,
+            "trigger": refresh_trigger,
+        },
+        {
+            "name": CLEANUP_TASK_NAME,
+            "description": CLEANUP_JOB_COMMENT,
+            "script_path": cleanup_script_path,
+            "trigger": cleanup_trigger,
+        },
     ]
 
     try:
-        for create_cmd, change_cmd, task_name in commands_to_run:
-            # Step 1: Create the task
-            subprocess.run(
-                create_cmd,
-                check=True,
-                capture_output=True,
-                text=True,
-                creationflags=CREATE_NO_WINDOW,
-            )
-            print(f"- Task '{task_name}' created/updated successfully.")
+        # Get the current user to embed in the XML for correct permissions
+        current_user = subprocess.check_output("whoami", text=True).strip()
+        print(f"INFO: Setting up tasks to run as user '{current_user}'.")
 
-            # Step 2: Change its conditions to run on battery and ignore idle
-            subprocess.run(
-                change_cmd,
-                check=True,
-                capture_output=True,
-                text=True,
-                creationflags=CREATE_NO_WINDOW,
+        for task in tasks_to_create:
+            xml_content = XML_TEMPLATE.format(
+                description=task["description"],
+                trigger=task["trigger"],
+                user_id=current_user,
+                command=pythonw_path,
+                arguments=f'"{task["script_path"]}"',
+                workdir=project_path,
             )
-            print(
-                f"  -> Conditions for '{task_name}' updated (runs on battery, ignores idle)."
-            )
+
+            # Use a temporary file to store the XML definition
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".xml", delete=False, encoding="utf-16"
+            ) as tmp:
+                tmp.write(xml_content)
+                temp_xml_path = tmp.name
+
+            try:
+                # Create the task from the XML file
+                command = [
+                    "schtasks",
+                    "/create",
+                    "/TN",
+                    task["name"],
+                    "/XML",
+                    temp_xml_path,
+                    "/F",
+                ]
+                subprocess.run(
+                    command,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    creationflags=CREATE_NO_WINDOW,
+                )
+                print(f"- Task '{task['name']}' created/updated successfully from XML.")
+            finally:
+                # Clean up the temporary file
+                os.remove(temp_xml_path)
 
         print("\nSuccess! All scheduler tasks have been set up with proper conditions.")
 
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        error_output = e.stderr if hasattr(e, "stderr") else str(e)
         print(
-            "ERROR: Could not create or modify a task. You may need to run this script as an Administrator."
+            "ERROR: Could not create a task. You may need to run this script as an Administrator."
         )
-        print(f"Details: {e.stderr}")
+        print(f"Details: {error_output}")
 
 
 def remove_windows_task():
