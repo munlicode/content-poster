@@ -50,7 +50,10 @@ def get_paths():
 
 # --- Windows Functions (MODIFIED) ---
 def setup_windows_task(frequency: int):
-    """Creates or updates all tasks in Windows Task Scheduler."""
+    """
+    Creates or updates all tasks in Windows Task Scheduler, ensuring they can
+    run on battery power and are not restricted by idle time.
+    """
     (
         project_path,
         pythonw_path,
@@ -63,12 +66,12 @@ def setup_windows_task(frequency: int):
         f"Setting up Windows Tasks: {TASK_NAME}, {REFRESH_TASK_NAME}, & {CLEANUP_TASK_NAME}"
     )
 
-    # Main command strings
+    # --- Command Strings ---
     main_command = f'"{pythonw_path}" "{main_script_path}"'
     refresh_command = f'"{pythonw_path}" "{refresh_script_path}"'
     cleanup_command = f'"{pythonw_path}" "{cleanup_script_path}"'
 
-    # --- 1. Main Posting Task ---
+    # --- Task Creation Commands ---
     schtasks_main_command = [
         "schtasks",
         "/create",
@@ -78,13 +81,10 @@ def setup_windows_task(frequency: int):
         str(frequency),
         "/TN",
         TASK_NAME,
-        # MODIFIED LINE
         "/TR",
         f'cmd /c "cd /d {project_path} && start /B "" {main_command}"',
         "/F",
     ]
-
-    # --- 2. Token Refresh Task ---
     schtasks_refresh_command = [
         "schtasks",
         "/create",
@@ -94,13 +94,10 @@ def setup_windows_task(frequency: int):
         "03:00",
         "/TN",
         REFRESH_TASK_NAME,
-        # MODIFIED LINE
         "/TR",
         f'cmd /c "cd /d {project_path} && start /B "" {refresh_command}"',
         "/F",
     ]
-
-    # --- 3. Repo Cleanup Task ---
     schtasks_cleanup_command = [
         "schtasks",
         "/create",
@@ -112,45 +109,65 @@ def setup_windows_task(frequency: int):
         "04:00",
         "/TN",
         CLEANUP_TASK_NAME,
-        # MODIFIED LINE
         "/TR",
         f'cmd /c "cd /d {project_path} && start /B "" {cleanup_command}"',
         "/F",
     ]
 
+    # --- NEW: Task Condition Modification Commands ---
+    schtasks_main_change_cmd = ["schtasks", "/change", "/TN", TASK_NAME, "/NAC", "/I"]
+    schtasks_refresh_change_cmd = [
+        "schtasks",
+        "/change",
+        "/TN",
+        REFRESH_TASK_NAME,
+        "/NAC",
+        "/I",
+    ]
+    schtasks_cleanup_change_cmd = [
+        "schtasks",
+        "/change",
+        "/TN",
+        CLEANUP_TASK_NAME,
+        "/NAC",
+        "/I",
+    ]
+
+    commands_to_run = [
+        (schtasks_main_command, schtasks_main_change_cmd, TASK_NAME),
+        (schtasks_refresh_command, schtasks_refresh_change_cmd, REFRESH_TASK_NAME),
+        (schtasks_cleanup_command, schtasks_cleanup_change_cmd, CLEANUP_TASK_NAME),
+    ]
+
     try:
-        subprocess.run(
-            schtasks_main_command,
-            check=True,
-            capture_output=True,
-            text=True,
-            creationflags=CREATE_NO_WINDOW,
-        )
-        print(f"- Task '{TASK_NAME}' created/updated successfully.")
+        for create_cmd, change_cmd, task_name in commands_to_run:
+            # Step 1: Create the task
+            subprocess.run(
+                create_cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                creationflags=CREATE_NO_WINDOW,
+            )
+            print(f"- Task '{task_name}' created/updated successfully.")
 
-        subprocess.run(
-            schtasks_refresh_command,
-            check=True,
-            capture_output=True,
-            text=True,
-            creationflags=CREATE_NO_WINDOW,
-        )
-        print(f"- Task '{REFRESH_TASK_NAME}' created/updated successfully.")
+            # Step 2: Change its conditions to run on battery and ignore idle
+            subprocess.run(
+                change_cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                creationflags=CREATE_NO_WINDOW,
+            )
+            print(
+                f"  -> Conditions for '{task_name}' updated (runs on battery, ignores idle)."
+            )
 
-        subprocess.run(
-            schtasks_cleanup_command,
-            check=True,
-            capture_output=True,
-            text=True,
-            creationflags=CREATE_NO_WINDOW,
-        )
-        print(f"- Task '{CLEANUP_TASK_NAME}' created/updated successfully.")
-
-        print("\nSuccess! All scheduler tasks have been set up.")
+        print("\nSuccess! All scheduler tasks have been set up with proper conditions.")
 
     except subprocess.CalledProcessError as e:
         print(
-            "ERROR: Could not create a task. You may need to run this script as an Administrator."
+            "ERROR: Could not create or modify a task. You may need to run this script as an Administrator."
         )
         print(f"Details: {e.stderr}")
 
