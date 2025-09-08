@@ -13,9 +13,13 @@ TASK_NAME = "Content Poster Script"
 REFRESH_JOB_COMMENT = "Content Poster Token Refresh Job"
 REFRESH_TASK_NAME = "Content Poster Token Refresh Script"
 
-# NEW: Names for the repo cleanup job
+# Names for the repo cleanup job
 CLEANUP_JOB_COMMENT = "Repo Cleanup Job"
 CLEANUP_TASK_NAME = "Repo Cleanup Script"
+
+# --- Platform-specific settings for subprocess ---
+# This flag will prevent console windows from popping up on Windows
+CREATE_NO_WINDOW = 0x08000000 if sys.platform.startswith("win") else 0
 
 
 def get_paths():
@@ -26,13 +30,14 @@ def get_paths():
     project_path = os.path.dirname(os.path.abspath(__file__))
 
     if sys.platform.startswith("win"):
-        python_path = os.path.join(project_path, "venv", "Scripts", "python.exe")
+        # Use pythonw.exe to run the script without a console window
+        python_path = os.path.join(project_path, "venv", "Scripts", "pythonw.exe")
     else:
         python_path = os.path.join(project_path, "venv", "bin", "python")
 
     main_script_path = os.path.join(project_path, "main.py")
     refresh_script_path = os.path.join(project_path, "refresh_token.py")
-    cleanup_script_path = os.path.join(project_path, "clean_github_uploads.py")  # NEW
+    cleanup_script_path = os.path.join(project_path, "clean_github_uploads.py")
 
     return (
         project_path,
@@ -43,22 +48,22 @@ def get_paths():
     )
 
 
-# --- Windows Functions ---
+# --- Windows Functions (MODIFIED) ---
 def setup_windows_task(frequency: int):
     """Creates or updates all tasks in Windows Task Scheduler."""
     (
         project_path,
-        python_path,
+        pythonw_path,  # Renamed for clarity
         main_script_path,
         refresh_script_path,
         cleanup_script_path,
     ) = get_paths()
-    pythonw_path = python_path.replace("python.exe", "pythonw.exe")
+
     print(
         f"Setting up Windows Tasks: {TASK_NAME}, {REFRESH_TASK_NAME}, & {CLEANUP_TASK_NAME}"
     )
 
-    # --- 1. Main Posting Task (every minute) ---
+    # --- 1. Main Posting Task ---
     main_command = f'"{pythonw_path}" "{main_script_path}"'
     schtasks_main_command = [
         "schtasks",
@@ -74,7 +79,7 @@ def setup_windows_task(frequency: int):
         "/F",
     ]
 
-    # --- 2. Token Refresh Task (daily at 3 AM) ---
+    # --- 2. Token Refresh Task ---
     refresh_command = f'"{pythonw_path}" "{refresh_script_path}"'
     schtasks_refresh_command = [
         "schtasks",
@@ -90,7 +95,7 @@ def setup_windows_task(frequency: int):
         "/F",
     ]
 
-    # --- 3. NEW: Repo Cleanup Task (weekly on Sunday at 4 AM) ---
+    # --- 3. Repo Cleanup Task ---
     cleanup_command = f'"{pythonw_path}" "{cleanup_script_path}"'
     schtasks_cleanup_command = [
         "schtasks",
@@ -109,16 +114,31 @@ def setup_windows_task(frequency: int):
     ]
 
     try:
+        # MODIFIED: Added creationflags to hide the schtasks.exe window
         subprocess.run(
-            schtasks_main_command, check=True, capture_output=True, text=True
+            schtasks_main_command,
+            check=True,
+            capture_output=True,
+            text=True,
+            creationflags=CREATE_NO_WINDOW,
         )
         print(f"- Task '{TASK_NAME}' created/updated successfully.")
+
         subprocess.run(
-            schtasks_refresh_command, check=True, capture_output=True, text=True
+            schtasks_refresh_command,
+            check=True,
+            capture_output=True,
+            text=True,
+            creationflags=CREATE_NO_WINDOW,
         )
         print(f"- Task '{REFRESH_TASK_NAME}' created/updated successfully.")
+
         subprocess.run(
-            schtasks_cleanup_command, check=True, capture_output=True, text=True
+            schtasks_cleanup_command,
+            check=True,
+            capture_output=True,
+            text=True,
+            creationflags=CREATE_NO_WINDOW,
         )
         print(f"- Task '{CLEANUP_TASK_NAME}' created/updated successfully.")
 
@@ -136,14 +156,21 @@ def remove_windows_task():
     commands_to_run = [
         ["schtasks", "/delete", "/TN", TASK_NAME, "/F"],
         ["schtasks", "/delete", "/TN", REFRESH_TASK_NAME, "/F"],
-        ["schtasks", "/delete", "/TN", CLEANUP_TASK_NAME, "/F"],  # NEW
+        ["schtasks", "/delete", "/TN", CLEANUP_TASK_NAME, "/F"],
     ]
 
     print("Removing scheduler tasks...")
     for command in commands_to_run:
         task_name_to_remove = command[3]
         try:
-            subprocess.run(command, check=True, capture_output=True, text=True)
+            # MODIFIED: Added creationflags to hide the schtasks.exe window
+            subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+                creationflags=CREATE_NO_WINDOW,
+            )
             print(f"- Task '{task_name_to_remove}' removed successfully.")
         except subprocess.CalledProcessError as e:
             if "ERROR: The specified task name" in e.stderr:
