@@ -53,7 +53,7 @@ def setup_windows_task(frequency: int):
     """Creates or updates all tasks in Windows Task Scheduler."""
     (
         project_path,
-        pythonw_path,  # Renamed for clarity
+        pythonw_path,
         main_script_path,
         refresh_script_path,
         cleanup_script_path,
@@ -63,8 +63,12 @@ def setup_windows_task(frequency: int):
         f"Setting up Windows Tasks: {TASK_NAME}, {REFRESH_TASK_NAME}, & {CLEANUP_TASK_NAME}"
     )
 
-    # --- 1. Main Posting Task ---
+    # Main command strings
     main_command = f'"{pythonw_path}" "{main_script_path}"'
+    refresh_command = f'"{pythonw_path}" "{refresh_script_path}"'
+    cleanup_command = f'"{pythonw_path}" "{cleanup_script_path}"'
+
+    # --- 1. Main Posting Task ---
     schtasks_main_command = [
         "schtasks",
         "/create",
@@ -74,13 +78,13 @@ def setup_windows_task(frequency: int):
         str(frequency),
         "/TN",
         TASK_NAME,
+        # MODIFIED LINE
         "/TR",
-        f'cmd /c "cd /d {project_path} && {main_command}"',
+        f'cmd /c "cd /d {project_path} && start /B "" {main_command}"',
         "/F",
     ]
 
     # --- 2. Token Refresh Task ---
-    refresh_command = f'"{pythonw_path}" "{refresh_script_path}"'
     schtasks_refresh_command = [
         "schtasks",
         "/create",
@@ -90,13 +94,13 @@ def setup_windows_task(frequency: int):
         "03:00",
         "/TN",
         REFRESH_TASK_NAME,
+        # MODIFIED LINE
         "/TR",
-        f'cmd /c "cd /d {project_path} && {refresh_command}"',
+        f'cmd /c "cd /d {project_path} && start /B "" {refresh_command}"',
         "/F",
     ]
 
     # --- 3. Repo Cleanup Task ---
-    cleanup_command = f'"{pythonw_path}" "{cleanup_script_path}"'
     schtasks_cleanup_command = [
         "schtasks",
         "/create",
@@ -108,13 +112,13 @@ def setup_windows_task(frequency: int):
         "04:00",
         "/TN",
         CLEANUP_TASK_NAME,
+        # MODIFIED LINE
         "/TR",
-        f'cmd /c "cd /d {project_path} && {cleanup_command}"',
+        f'cmd /c "cd /d {project_path} && start /B "" {cleanup_command}"',
         "/F",
     ]
 
     try:
-        # MODIFIED: Added creationflags to hide the schtasks.exe window
         subprocess.run(
             schtasks_main_command,
             check=True,
